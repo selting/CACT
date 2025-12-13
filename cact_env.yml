@@ -1,0 +1,33 @@
+name: CACT 
+channels:
+  - conda-forge
+  - https://conda.anaconda.org/gurobi
+  - defaults
+dependencies:
+  - bayesian-optimization
+  - gurobi=11
+  - jupyterlab
+  - matplotlib
+  - mlflow
+  - numpy
+  - pandas
+  - pip
+  - plotly
+  - plotnine
+  - postgresql
+  - psycopg2
+  - pyomo
+  - python=3.10
+  - pytorch
+  - scikit-learn
+  - scipy
+  - seaborn
+  - shapely
+  - shiny
+  - shinywidgets
+  - sqlalchemy
+  - sqlite
+  - tqdm
+  - xgboost
+  - pip:
+    - pyvrp==0.9.0
