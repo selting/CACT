@@ -460,9 +460,8 @@ class CAHDInstance:
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
 
-        if self.meta["t"] == "euclidean":
-            plt.xlim(0, 25)
-            plt.ylim(0, 25)
+        # plt.xlim(self.min_x_coord, self.max_x_coord)
+        # plt.ylim(self.min_y_coord, self.max_y_coord)
 
         # Put a legend to the right of the current axis
         ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
