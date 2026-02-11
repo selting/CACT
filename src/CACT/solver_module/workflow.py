@@ -28,6 +28,11 @@ def execute_jobs(
     print(f"Solving on {num_threads} thread(s)")
     n_jobs = len(paths) * len(solvers)
     jobs = itertools.product(paths, solvers, [fail_on_error], [mlflow_group_id])
+    
+    # set the mlflow tracking URI, here, a sqlite database in the cwd
+    mlflow.set_tracking_uri("sqlite:///src/CACT/data/experiments/cact.db")
+
+    # select single or multithreaded solving
     if num_threads == 1:
         solutions_and_auctions = []
         for j in tqdm(list(jobs)):

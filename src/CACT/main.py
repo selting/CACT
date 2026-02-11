@@ -16,10 +16,10 @@ if __name__ == "__main__":
             "num_requests": [10],
             "carrier_max_num_tours": [1],
             "service_area_overlap": [1.0],
-            "run": range(4),
+            "run": range(1),
             "threads": 1,
             "fail_on_error": 1,
-            "tag": "local_dev" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+            "tag": "local_dev_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         }
     # else read from terminal parameters
     else:

@@ -217,3 +217,5 @@ __marimo__/
 
 # mlflow experiment tracking
 mlruns/
+.vscode/tasks.json
+src/CACT/data/experiments/cact.db
