@@ -153,7 +153,7 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
             for optimization_policy in [
                 opt_policy(max_num_function_evaluations, **hyperparams)
                 for opt_policy, hyperparams in [
-                    (TrulyRandomSearch, {}),
+                    # (TrulyRandomSearch, {}),
                     # (BayesianOptimizationPolicy, {}),
                 ]
                 + [
@@ -167,7 +167,7 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
                     for algo, lexicographic_order in [
                         # (nlopt.GN_DIRECT_L, False),
                         # (nlopt.GN_DIRECT, False),
-                        # (nlopt.GN_DIRECT_L_RAND, False),
+                        (nlopt.GN_DIRECT_L_RAND, False),
                         #
                         # (nlopt.GN_CRS2_LM, False),
                         #
