@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CACT"
+version = "0.1.0"
+dependencies = [] # Add external libraries here (e.g., "requests", "numpy")
+
+[tool.setuptools.packages.find]
+where = ["src"]  # This tells Python to look in 'src' for your package
