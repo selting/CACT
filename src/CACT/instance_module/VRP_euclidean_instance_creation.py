@@ -1,16 +1,16 @@
 import datetime as dt
 import math
-from typing import Union, Optional
+from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
-from scipy.spatial.distance import squareform, pdist
-from tqdm import trange
-from sklearn.datasets import make_blobs
-
 from core_module import instance as it
 from core_module.depot import Depot
 from core_module.request import Request
-from utility_module import io, utils as ut
+from scipy.spatial.distance import pdist, squareform
+from sklearn.datasets import make_blobs
+from tqdm import trange
+from utility_module import utils as ut
 
 
 def generate_euclidean_cr_ahd_instance(
@@ -34,7 +34,7 @@ def generate_euclidean_cr_ahd_instance(
     requests_load: Union[float, int, list[float], list[int]],
     constant_kmh: float,
     plot=False,
-    save=True,
+    save_path=True,
 ):
     if carrier_competition != 1:
         raise NotImplementedError("Only carrier_competition=1 is supported for now")
@@ -133,14 +133,29 @@ def generate_euclidean_cr_ahd_instance(
     duration_matrix = distance_matrix / constant_kmh
     duration_matrix = np.vectorize(lambda x: dt.timedelta(hours=x))(duration_matrix)
 
+    identifier = "t=euclidean"
+    identifier += f"+d={dist_center_to_carrier}"
+    identifier += f"+c={num_carriers}"
+    identifier += f"+n={num_requests_per_carrier:02d}"
+    identifier += f"+v={carriers_max_num_tours}"
+    identifier += f"+o={int(carrier_competition * 100):03d}"
+    identifier += f"+r={run:02d}"
+    if num_clusters_per_carrier:
+        identifier += f"+cl={num_clusters_per_carrier}-{cluster_std}"
+
     instance = it.CAHDInstance(
-        id_=f"t=euclidean"
-        f"+d={dist_center_to_carrier}"
-        f"+c={num_carriers}"
-        f"+n={num_requests_per_carrier:02d}"
-        f"+v={carriers_max_num_tours}"
-        f"+o={int(carrier_competition * 100):03d}"
-        f"+r={run:02d}",
+        id_=identifier,
+        meta=dict(
+            type="euclidean",
+            dist_center_to_carrier=dist_center_to_carrier,
+            num_carriers=num_carriers,
+            num_requests_per_carrier=num_requests_per_carrier,
+            carriers_max_num_tours=carriers_max_num_tours,
+            carrier_competition=carrier_competition,
+            run=run,
+            num_clusters_per_carrier=num_clusters_per_carrier,
+            cluster_std=cluster_std,
+        ),
         carriers_max_num_tours=carriers_max_num_tours,
         max_vehicle_load=max_vehicle_load,
         max_tour_distance=max_tour_length,
@@ -153,11 +168,12 @@ def generate_euclidean_cr_ahd_instance(
 
     if plot:
         instance.plot()
-    if save:
+    if save_path:
         instance.write_json(
-            io.data_dir.joinpath(
-                "CR_AHD_instances", "euclidean_instances", f"{instance.id_}.json"
-            )
+            Path(save_path).joinpath(f"{instance.id_}.json")
+            # io.data_dir.joinpath(
+            #     "CR_AHD_instances", "euclidean_instances", f"{instance.id_}.json"
+            # )
         )
 
     return instance
@@ -165,31 +181,32 @@ def generate_euclidean_cr_ahd_instance(
 
 if __name__ == "__main__":
     for num_requests_per_carrier in [8, 16, 32, 64]:
-        for run in trange(
-            # 100,
-            1,
-            desc=f"Generating instances with {num_requests_per_carrier} requests per carrier",
-        ):
-            generate_euclidean_cr_ahd_instance(
-                x_min=0,
-                x_max=100,
-                y_min=0,
-                y_max=100,
-                dist_center_to_carrier=25,
-                num_carriers=3,
-                num_requests_per_carrier=num_requests_per_carrier,
-                num_clusters_per_carrier=1,
-                cluster_std=3,
-                carriers_max_num_tours=1,
-                carrier_competition=1,
-                run=run,
-                max_vehicle_load=999999999,
-                max_tour_length=999999999,
-                max_tour_duration=999999999,
-                requests_revenue=1,
-                requests_service_duration=dt.timedelta(minutes=4),
-                requests_load=1,
-                constant_kmh=30,
-                plot=True,
-                save=False,
-            )
+        for num_clusters_per_carrier, cluster_std in [(None, None), (3, 3)]:
+            for run in trange(
+                200,
+                # 1,
+                desc=f"Generating instances with {num_requests_per_carrier} requests per carrier",
+            ):
+                generate_euclidean_cr_ahd_instance(
+                    x_min=0,
+                    x_max=100,
+                    y_min=0,
+                    y_max=100,
+                    dist_center_to_carrier=25,
+                    num_carriers=3,
+                    num_requests_per_carrier=num_requests_per_carrier,
+                    num_clusters_per_carrier=num_clusters_per_carrier,
+                    cluster_std=cluster_std,
+                    carriers_max_num_tours=1,
+                    carrier_competition=1,
+                    run=run,
+                    max_vehicle_load=999999999,
+                    max_tour_length=999999999,
+                    max_tour_duration=999999999,
+                    requests_revenue=1,
+                    requests_service_duration=dt.timedelta(minutes=4),
+                    requests_load=1,
+                    constant_kmh=30,
+                    plot=False,
+                    save_path=Path("data/instances/euclidean_instances_rev1"),
+                )

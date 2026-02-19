@@ -1,5 +1,8 @@
 import datetime as dt
 import json
+import pathlib
+from typing import Dict, List, Any
+import json
 import re
 import sqlite3
 import subprocess
@@ -119,7 +122,7 @@ def solutions_to_df(solutions, agg_level: str):
             )
             for carrier in solution.carriers:
                 record = solution.summary()
-                record.pop("carrier_summaries")
+                record.pop("carrier_summarCAHDInstance(ies")
                 record.update(carrier.summary())
                 record.pop("tour_summaries")
                 df.append(record)
@@ -269,7 +272,7 @@ def instance_file_selector(
     :param num_requests: number of requests per carrier
     :param service_area_overlap: degree of overlap of the service areas between 0 (no overlap) and 1 (all carriers serve the whole city)
     :param run: run, i.e. which of the random instances with the above parameters
-    :return: a MDVRPTWInstance
+    :return: an CAHDInstance
     """
     instance_path = pkg_resources.files("data.instances")
 
@@ -407,59 +410,106 @@ def instance_file_selector(
     return paths
 
 
-def instance_selector(run=None, rad=None, n=None):
+def instance_file_selector_2(
+    dir_path: str, filter_criteria: Dict[str, List[Any]]
+) -> List[str]:
     """
-    If no arguments are passed a single, random Gansterer&Hartl instance is being solved.
+    Scans a directory for JSON files and filters them based on nested 'desc' values.
 
-    :param run:
-    :param rad:
-    :param n:
-    :return:
+    :param dir_path: Path to the directory to scan.
+    :param filter_criteria: Dict where keys match 'desc' keys, and values are lists of allowed matches.
+    :return: List of paths to matching JSON files.
     """
-    # print(f'instance selector: run={run}({type(run)}), rad={rad}({type(rad)}), n={n}({type(n)})')
-    if isinstance(run, int):
-        p_run = run
-    elif run is None:
-        p_run = "\d+"
-    elif isinstance(run, (list, tuple, range)):
-        p_run = f"({'|'.join((str(x) for x in run))})"
-    else:
-        raise ValueError(
-            f"run must be int or list of int. run={run} is type {type(run)}"
-        )
+    base_path = pathlib.Path(dir_path)
+    matched_files = []
 
-    if isinstance(rad, int):
-        p_rad = rad
-    elif rad is None:
-        p_rad = "\d+"
-    elif isinstance(rad, (list, tuple, range)):
-        p_rad = f"({'|'.join((str(x) for x in rad))})"
-    else:
-        raise ValueError(
-            f"rad must be int or list of int. rad={rad} is type {type(rad)}"
-        )
+    # Iterate through all .json files in the directory
+    for file_path in base_path.glob("*.json"):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
 
-    if isinstance(n, int):
-        p_n = n
-    elif n is None:
-        p_n = "\d+"
-    elif isinstance(n, (list, tuple, range)):
-        p_n = f"({'|'.join((str(x) for x in n))})"
-    else:
-        raise ValueError(f"n must be int or list of int. n={n} is type {type(run)}")
+            # Ensure "meta" exists and is a dictionary
+            inst_meta = data.get("meta")
+            if not isinstance(inst_meta, dict):
+                continue
 
-    pattern = re.compile(f"run={p_run}\+dist=200\+rad={p_rad}\+n={p_n}(\.dat)")
-    paths = []
-    for file in sorted(
-        cr_ahd_instances_dir.joinpath("GH_instances").glob("*.dat"),
-        key=ut.natural_sort_key,
-    ):
-        if pattern.match(file.name):
-            paths.append(file)
-            # print(file.name)
-    if len(paths) == 0:
-        raise ValueError
-    return paths
+            # Check if all filter criteria are met
+            is_match = True
+            for key, allowed_values in filter_criteria.items():
+                # Get the value from the file's meta dict
+                actual_value = inst_meta.get(key)
+
+                # If the key is missing or the value isn't in our allowed list, it's a bust
+                if actual_value not in allowed_values:
+                    is_match = False
+                    break
+
+            if is_match:
+                matched_files.append(str(file_path))
+
+        except (json.JSONDecodeError, PermissionError) as e:
+            print(f"Skipping {file_path.name}: {e}")
+        
+    if len(matched_files) == 0:
+        raise ValueError("No instance existst for the given filter: \n", filter_criteria)
+
+    return matched_files
+
+
+# def instance_selector(run=None, rad=None, n=None):
+#     """
+#     If no arguments are passed a single, random Gansterer&Hartl instance is being solved.
+
+#     :param run:
+#     :param rad:
+#     :param n:
+#     :return:
+#     """
+#     # print(f'instance selector: run={run}({type(run)}), rad={rad}({type(rad)}), n={n}({type(n)})')
+#     if isinstance(run, int):
+#         p_run = run
+#     elif run is None:
+#         p_run = "\d+"
+#     elif isinstance(run, (list, tuple, range)):
+#         p_run = f"({'|'.join((str(x) for x in run))})"
+#     else:
+#         raise ValueError(
+#             f"run must be int or list of int. run={run} is type {type(run)}"
+#         )
+
+#     if isinstance(rad, int):
+#         p_rad = rad
+#     elif rad is None:
+#         p_rad = "\d+"
+#     elif isinstance(rad, (list, tuple, range)):
+#         p_rad = f"({'|'.join((str(x) for x in rad))})"
+#     else:
+#         raise ValueError(
+#             f"rad must be int or list of int. rad={rad} is type {type(rad)}"
+#         )
+
+#     if isinstance(n, int):
+#         p_n = n
+#     elif n is None:
+#         p_n = "\d+"
+#     elif isinstance(n, (list, tuple, range)):
+#         p_n = f"({'|'.join((str(x) for x in n))})"
+#     else:
+#         raise ValueError(f"n must be int or list of int. n={n} is type {type(run)}")
+
+#     pattern = re.compile(f"run={p_run}\+dist=200\+rad={p_rad}\+n={p_n}(\.dat)")
+#     paths = []
+#     for file in sorted(
+#         cr_ahd_instances_dir.joinpath("GH_instances").glob("*.dat"),
+#         key=ut.natural_sort_key,
+#     ):
+#         if pattern.match(file.name):
+#             paths.append(file)
+#             # print(file.name)
+#     if len(paths) == 0:
+#         raise ValueError
+#     return paths
 
 
 def get_output_counter() -> int:

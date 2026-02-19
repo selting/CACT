@@ -124,6 +124,7 @@ class _CarrierModel:
 
         current_params_instance = CAHDInstance(
             id_='t=tmp_dummy',
+            meta=original_instance.meta,
             carriers_max_num_tours=original_instance.carriers_max_num_tours,
             max_vehicle_load=original_instance.max_vehicle_load,
             max_tour_distance=original_instance.max_tour_distance,

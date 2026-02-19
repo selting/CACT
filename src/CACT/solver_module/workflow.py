@@ -29,7 +29,6 @@ def execute_jobs(
     n_jobs = len(paths) * len(solvers)
     jobs = itertools.product(paths, solvers, [fail_on_error], [mlflow_group_id])
     
-    # set the mlflow tracking URI, here, a sqlite database in the cwd
     mlflow.set_tracking_uri("sqlite:///src/CACT/data/experiments/cact.db")
 
     # select single or multithreaded solving

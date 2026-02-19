@@ -205,6 +205,15 @@ def generate_vienna_cr_ahd_instance(
         f"+v={carriers_max_num_tours}"
         f"+o={int(carrier_competition * 100):03d}"
         f"+r={run:02d}",
+        meta=dict(
+            type="vienna",
+            dist_center_to_carrier_km=dist_center_to_carrier_km,
+            num_carriers=num_carriers,
+            num_requests_per_carrier=num_requests_per_carrier,
+            carriers_max_num_tours=carriers_max_num_tours,
+            carrier_competition=carrier_competition,
+            run=run,
+        ),
         carriers_max_num_tours=carriers_max_num_tours,
         max_vehicle_load=max_vehicle_load,
         max_tour_distance=max_tour_length,

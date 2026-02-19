@@ -20,6 +20,7 @@ class CAHDInstance:
     def __init__(
         self,
         id_: str,
+        meta: dict,
         carriers_max_num_tours: int,
         max_vehicle_load: float,
         max_tour_distance: float,
@@ -30,10 +31,7 @@ class CAHDInstance:
         distance_matrix,
     ):
         self._id_ = id_
-        self.meta = dict(
-            (k.strip(), v if k == "t" else int(v.strip()))
-            for k, v in (item.split("=") for item in id_.split("+"))
-        )
+        self.meta = meta
         self.num_carriers = len(depots)
         self.max_vehicle_load = max_vehicle_load
         self.max_tour_distance = max_tour_distance
@@ -213,7 +211,7 @@ class CAHDInstance:
         data["_travel_distance_matrix"] = self._travel_distance_matrix
         # abort if file already exists
         if path.exists():
-            raise FileExistsError(f"File already exists")
+            raise FileExistsError(f"File {path} already exists")
         with open(path, "w") as file:
             json.dump(data, file, cls=MyJSONEncoder, indent=4)
 
@@ -424,6 +422,7 @@ class CAHDInstance:
 
         return CAHDInstance(
             id_=inst["_id_"],
+            meta=inst["meta"],
             carriers_max_num_tours=inst["carriers_max_num_tours"],
             max_vehicle_load=inst["max_vehicle_load"],
             max_tour_distance=inst["max_tour_distance"],
