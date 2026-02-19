@@ -217,5 +217,9 @@ __marimo__/
 
 # mlflow experiment tracking
 mlruns/
+
+# others
 .vscode/tasks.json
 src/CACT/data/experiments/cact.db
+
+src/CACT/data/instances/euclidean_instances_rev1 
