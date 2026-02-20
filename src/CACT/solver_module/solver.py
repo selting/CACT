@@ -91,6 +91,7 @@ class IsolatedSolver(Solver):
     def request_arrival(self, instance: CAHDInstance, solution: CAHDSolution):
         tw_options = generate_time_windows(self.time_window_length)
 
+        # consider request in order of their disclosure time. This is *before* vehicles leave the depot
         for request in sorted(instance.requests, key=lambda x: x.disclosure_time):
             carrier: Carrier = solution.carriers[request.initial_carrier_assignment]
 
@@ -107,12 +108,6 @@ class IsolatedSolver(Solver):
                 # if no tws are offered, or no tw was selected by the customer, the request is not accepted, tw is reset
                 request.tw_open = ut.EXECUTION_TIME_HORIZON.open
                 request.tw_close = ut.EXECUTION_TIME_HORIZON.close
-                # TODO: below is outdated. check whether the request is in any way connected to the carrier. if not,
-                #  simply resetting the tw is enough
-                warnings.warn(
-                    "Deprecated code! - does not adhere to the latest updates of the carrier class and the "
-                    "routing solver. Check and update the code here"
-                )
                 carrier.reject_request(request)
                 pass
         pass

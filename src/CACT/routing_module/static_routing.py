@@ -219,7 +219,7 @@ class StaticPyVrp(StaticRouting):
         requests: list[Request],
         max_num_vehicles: int,
     ) -> pyvrp.ProblemData:
-        if "vienna" in instance.meta["t"]:
+        if "vienna" in instance.meta["type"]:
             clients = []
             sorted_requests = sorted(requests, key=lambda x: x.uid)
             coords_scaling_factor = 1e14

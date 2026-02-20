@@ -97,7 +97,7 @@ class _CarrierModel:
         own_requests = self.requests(original_instance.num_vertices, original_instance.num_requests)
         extended_requests = original_instance.requests + own_requests
         extended_xy = np.array([(v.x, v.y) for v in original_instance.vertices + own_requests])
-        if original_instance.meta['t'] == 'euclidean':
+        if original_instance.meta['type'] == 'euclidean':
             extended_distance_matrix = squareform(pdist(extended_xy, metric='euclidean'))
             # generate the duration matrix in datetime.timedelta format
             constant_kmh = 30
@@ -266,7 +266,7 @@ class BundleFitnessCarrierModel(BundleFitnessFunction):
                 y_true=responses[carrier_idx],
                 direction='min',
                 target_func_pnames=carrier_model.params_names,
-                target_func_pbounds=instance.meta['t'])
+                target_func_pbounds=instance.meta['type'])
             target_opt, target_opt_params = self._optimization_policy.optimize(instance, auction_request_pool,
                                                                                target_func)
             self._models[carrier_idx].current_params = target_opt_params

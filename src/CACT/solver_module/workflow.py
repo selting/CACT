@@ -76,12 +76,13 @@ def _execute_job(
         tags={"instance_id": instance.id_, "group_id": mlflow_group_id},
     ):
         seed = generate_unique_seed(
-            instance.meta["d"],
-            instance.meta["c"],
-            instance.meta["n"],
-            instance.meta["v"],
-            instance.meta["o"],
-            instance.meta["r"],
+            *list(instance.meta.values()),
+            # instance.meta["d"],
+            # instance.meta["c"],
+            # instance.meta["n"],
+            # instance.meta["v"],
+            # instance.meta["o"],
+            # instance.meta["r"],
             solver.params["time_window_length"],
         )
         set_all_seeds(seed)

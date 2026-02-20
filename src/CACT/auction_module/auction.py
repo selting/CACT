@@ -142,7 +142,7 @@ class Auction(ParameterizedClass):
     def run_auction(self, instance: it.CAHDInstance, solution: slt.CAHDSolution):
         # SETUP
         pre_auction_solution = deepcopy(solution)
-        logger.debug(f'running auction {self.__class__.__name__}')
+        # logger.debug(f'running auction {self.__class__.__name__}')
         self.log_params()
 
         # REQUEST SELECTION

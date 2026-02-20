@@ -31,9 +31,10 @@ class Carrier:
         self.depot = depot
         # TODO: having assert statements in "production" code is bad style! Check python args -O -OO, and replace MOST
         #  asserts with exceptions
-        assert objective in ["distance", "duration"], (
-            f'Objective must be either "distance" or "duration", not {objective}'
-        )
+        assert objective in [
+            "distance",
+            "duration",
+        ], f'Objective must be either "distance" or "duration", not {objective}'
         self._objective = objective
 
         self.max_num_tours = max_num_tours
@@ -158,16 +159,16 @@ class Carrier:
         }
 
     def add_tour(self, tour: Tour):
-        assert tour.routing_sequence[0] == self.depot, (
-            f"Tour {tour} does not start at the carrier's depot."
-        )
-        assert tour.routing_sequence[-1] == self.depot, (
-            f"Tour {tour} does not end at the carrier's depot."
-        )
+        assert (
+            tour.routing_sequence[0] == self.depot
+        ), f"Tour {tour} does not start at the carrier's depot."
+        assert (
+            tour.routing_sequence[-1] == self.depot
+        ), f"Tour {tour} does not end at the carrier's depot."
         for request in tour.requests:
-            assert request in self.unrouted_requests, (
-                f"Request {request} is not in the carrier's unrouted requests."
-            )
+            assert (
+                request in self.unrouted_requests
+            ), f"Request {request} is not in the carrier's unrouted requests."
         for request in tour.requests:
             self._unrouted_requests.remove(request)
             self._routed_requests.append(request)
@@ -197,16 +198,15 @@ class Carrier:
         self._assigned_requests.append(request)
 
     def accept_request(self, request: Request):
-        assert request in self.assigned_requests, (
-            f"Request {request} is not assigned to carrier {self.id_}."
-        )
+        """ "add to the lists of accepted and unrouted requests"""
+        assert (
+            request in self.assigned_requests
+        ), f"Request {request} is not assigned to carrier {self.id_}."
         self._accepted_requests.append(request)
         self._unrouted_requests.append(request)
 
     def reject_request(self, request: Request):
-        assert request in self.assigned_requests, (
-            f"Request {request} is not assigned to carrier {self.id_} "
-        )
+        """ "stores that the request was rejected"""
         self._rejected_requests.append(request)
 
     def plot(self, ax: plt.Axes = None, color="tab:red"):
@@ -300,12 +300,12 @@ class Carrier:
         :param instance:
         :return:
         """
-        assert request in self.assigned_requests, (
-            f"Request {request} is not assigned to carrier {self.id_}."
-        )
-        assert request in self.accepted_requests, (
-            f"Request {request} is not accepted by carrier {self.id_}."
-        )
+        assert (
+            request in self.assigned_requests
+        ), f"Request {request} is not assigned to carrier {self.id_}."
+        assert (
+            request in self.accepted_requests
+        ), f"Request {request} is not accepted by carrier {self.id_}."
         new_tours = self._routing_solver.insert_request(
             instance, self.tours, self.depot, request, self.max_num_tours
         )
@@ -324,12 +324,12 @@ class Carrier:
         :return:
         """
         for request in requests:
-            assert request in self.assigned_requests, (
-                f"Request {request} is not assigned to carrier {self.id_}."
-            )
-            assert request in self.accepted_requests, (
-                f"Request {request} is not accepted by carrier {self.id_}."
-            )
+            assert (
+                request in self.assigned_requests
+            ), f"Request {request} is not assigned to carrier {self.id_}."
+            assert (
+                request in self.accepted_requests
+            ), f"Request {request} is not accepted by carrier {self.id_}."
 
         for request in requests:
             if request in self._unrouted_requests:
@@ -453,12 +453,12 @@ class Carrier:
 
     def route_new_bundle(self, instance: CAHDInstance, bundle: Bundle):
         for request in bundle.requests:
-            assert request in self.assigned_requests, (
-                f"Request {request} is not assigned to carrier {self.id_}."
-            )
-            assert request in self.accepted_requests, (
-                f"Request {request} is not accepted by carrier {self.id_}."
-            )
+            assert (
+                request in self.assigned_requests
+            ), f"Request {request} is not assigned to carrier {self.id_}."
+            assert (
+                request in self.accepted_requests
+            ), f"Request {request} is not accepted by carrier {self.id_}."
         new_tours = self._routing_solver.insert_bundle(
             instance, self.tours, self.depot, bundle, self.max_num_tours
         )

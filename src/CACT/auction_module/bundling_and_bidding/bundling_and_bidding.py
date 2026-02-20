@@ -69,7 +69,7 @@ class BundlingAndBidding(ParameterizedClass):
         mlflow.log_metrics(mean_fit_results, step=0)  # logs the average mse, mape, rmse, ... across all carriers
         self._log_carrier_model_evaluation(solution, t=0)
 
-        # ITERATIVE PHASE
+        # ITERATIVE PHASE (optional, only if self.num_initial_queries < self.num_bidding_jobs)
         t = 1
         while any(len(x) < self.num_bidding_jobs for x in responses):
             adj_num_queries = self._get_adj_num_queries(queries)

@@ -4,7 +4,6 @@ import folium
 import geopandas as gp
 import matplotlib.pyplot as plt
 import numpy as np
-from folium.plugins import FeatureGroupSubGroup
 from geopandas import GeoSeries
 from matplotlib.colors import to_hex
 from shapely.geometry import Point
@@ -26,96 +25,96 @@ def read_vienna_districts_shapefile():
     return districts
 
 
-def plot_vienna_vrp_solution(instance: it.CAHDInstance, solution: slt.CAHDSolution, service_areas=True):
-    num_carriers = instance.num_carriers
-    # prepare districts
-    carrier_competition = instance.meta['o'] / 100
-    vienna_depots = [(instance.vertex_x_coords[x], instance.vertex_y_coords[x]) for x in range(instance.num_carriers)]
-    vienna_depots = [Point(*x) for x in vienna_depots]
-    vienna_depots = GeoSeries(vienna_depots, crs="EPSG:4326")
-    districts = read_vienna_districts_shapefile()
-    districts_centroids = districts.geometry.to_crs(epsg=3035).centroid.to_crs(epsg=4326)
-    # assign service districts based on (euclidean?) distance d(depot, district_centroid)
-    centroid_depot_dist = np.zeros((len(districts_centroids), num_carriers))
-    for (idx, name), centroid in districts_centroids.to_crs(epsg=3035).items():
-        for jdx, (_, depot) in enumerate(vienna_depots.to_crs(epsg=3035).geometry.items()):
-            centroid_depot_dist[idx - 1, jdx] = centroid.distance(depot)
-    carrier_district_assignment = centroid_depot_dist.min(axis=1).repeat(num_carriers).reshape(
-        centroid_depot_dist.shape)
-    carrier_district_assignment = carrier_district_assignment / centroid_depot_dist
-    carrier_district_assignment = np.argwhere(carrier_district_assignment >= (1 - carrier_competition))
-    carrier_district_assignment = ut.indices_to_nested_lists(carrier_district_assignment[:, 1],
-                                                             carrier_district_assignment[:, 0])
+# def plot_vienna_vrp_solution(instance: it.CAHDInstance, solution: slt.CAHDSolution, service_areas=True):
+#     num_carriers = instance.num_carriers
+#     # prepare districts
+#     carrier_competition = instance.meta['carrier_competition'] / 100
+#     vienna_depots = [(instance.vertex_x_coords[x], instance.vertex_y_coords[x]) for x in range(instance.num_carriers)]
+#     vienna_depots = [Point(*x) for x in vienna_depots]
+#     vienna_depots = GeoSeries(vienna_depots, crs="EPSG:4326")
+#     districts = read_vienna_districts_shapefile()
+#     districts_centroids = districts.geometry.to_crs(epsg=3035).centroid.to_crs(epsg=4326)
+#     # assign service districts based on (euclidean?) distance d(depot, district_centroid)
+#     centroid_depot_dist = np.zeros((len(districts_centroids), num_carriers))
+#     for (idx, name), centroid in districts_centroids.to_crs(epsg=3035).items():
+#         for jdx, (_, depot) in enumerate(vienna_depots.to_crs(epsg=3035).geometry.items()):
+#             centroid_depot_dist[idx - 1, jdx] = centroid.distance(depot)
+#     carrier_district_assignment = centroid_depot_dist.min(axis=1).repeat(num_carriers).reshape(
+#         centroid_depot_dist.shape)
+#     carrier_district_assignment = carrier_district_assignment / centroid_depot_dist
+#     carrier_district_assignment = np.argwhere(carrier_district_assignment >= (1 - carrier_competition))
+#     carrier_district_assignment = ut.indices_to_nested_lists(carrier_district_assignment[:, 1],
+#                                                              carrier_district_assignment[:, 0])
 
-    # plot
-    vienna_lat, vienna_long = 48.210033, 16.363449
-    m = folium.Map((vienna_lat, vienna_long), zoom_start=12, crs='EPSG3857', tiles='Stamen Toner')
-    folium.TileLayer('openstreetmap').add_to(m)
-    folium.TileLayer('StamenToner', name='StamenToner 0.3', opacity=0.3).add_to(m)
-    folium.TileLayer("", name="None", attr="blank").add_to(m)
-    # cmap1 = plt.get_cmap('jet', num_carriers)
-    cmap1 = ut.univie_cmap
+#     # plot
+#     vienna_lat, vienna_long = 48.210033, 16.363449
+#     m = folium.Map((vienna_lat, vienna_long), zoom_start=12, crs='EPSG3857', tiles='Stamen Toner')
+#     folium.TileLayer('openstreetmap').add_to(m)
+#     folium.TileLayer('StamenToner', name='StamenToner 0.3', opacity=0.3).add_to(m)
+#     folium.TileLayer("", name="None", attr="blank").add_to(m)
+#     # cmap1 = plt.get_cmap('jet', num_carriers)
+#     cmap1 = ut.univie_cmap
 
-    # carriers
-    keep_in_front_feautres = []
-    for carrier in solution.carriers:
-        carrier_group = folium.FeatureGroup(f'Carrier {carrier.id_}')
-        m.add_child(carrier_group)
-        color = to_hex(cmap1(carrier.id_ / num_carriers))
+#     # carriers
+#     keep_in_front_feautres = []
+#     for carrier in solution.carriers:
+#         carrier_group = folium.FeatureGroup(f'Carrier {carrier.id_}')
+#         m.add_child(carrier_group)
+#         color = to_hex(cmap1(carrier.id_ / num_carriers))
 
-        # depots
-        d = depot_marker(instance, carrier, color)
-        d.add_to(carrier_group)
-        keep_in_front_feautres.append(d)
+#         # depots
+#         d = depot_marker(instance, carrier, color)
+#         d.add_to(carrier_group)
+#         keep_in_front_feautres.append(d)
 
-        # service_areas
-        service_area_group = FeatureGroupSubGroup(carrier_group, f'  Service Area {carrier.id_}')
-        m.add_child(service_area_group)
-        for district_idx in carrier_district_assignment[carrier.id_]:
-            poly, name = districts.iloc[district_idx], districts.index[district_idx]
-            poly = folium.Polygon(
-                locations=poly.exterior.coords, popup=name, color=color, fill_color=color, fill_opacity=0.1,
-                weight=1, dashArray='2'
-            )
-            poly.add_to(service_area_group)
+#         # service_areas
+#         service_area_group = FeatureGroupSubGroup(carrier_group, f'  Service Area {carrier.id_}')
+#         m.add_child(service_area_group)
+#         for district_idx in carrier_district_assignment[carrier.id_]:
+#             poly, name = districts.iloc[district_idx], districts.index[district_idx]
+#             poly = folium.Polygon(
+#                 locations=poly.exterior.coords, popup=name, color=color, fill_color=color, fill_opacity=0.1,
+#                 weight=1, dashArray='2'
+#             )
+#             poly.add_to(service_area_group)
 
-        # tours
-        for tour in carrier.tours:
-            tour_group = FeatureGroupSubGroup(carrier_group, f'  Tour {tour.id_}')
-            m.add_child(tour_group)
-            tour_polyline(instance, tour, color).add_to(tour_group)
+#         # tours
+#         for tour in carrier.tours:
+#             tour_group = FeatureGroupSubGroup(carrier_group, f'  Tour {tour.id_}')
+#             m.add_child(tour_group)
+#             tour_polyline(instance, tour, color).add_to(tour_group)
 
-            # routed requests
-            for index, vertex in enumerate(tour.routing_sequence[1:-1], start=1):
-                routed_request_marker(instance, carrier, color, index, tour, vertex).add_to(tour_group)
+#             # routed requests
+#             for index, vertex in enumerate(tour.routing_sequence[1:-1], start=1):
+#                 routed_request_marker(instance, carrier, color, index, tour, vertex).add_to(tour_group)
 
-        # unrouted requests
-        for request in carrier.unrouted_requests:
-            unrouted_request_marker(instance, carrier, color, request).add_to(carrier_group)
+#         # unrouted requests
+#         for request in carrier.unrouted_requests:
+#             unrouted_request_marker(instance, carrier, color, request).add_to(carrier_group)
 
-    # unassigned requests
-    for request in solution.unassigned_requests:
-        color = to_hex(cmap1(instance.request_to_carrier_assignment[request] / num_carriers))
-        unassigned_request_marker(instance, color, request).add_to(m)
+#     # unassigned requests
+#     for request in solution.unassigned_requests:
+#         color = to_hex(cmap1(instance.request_to_carrier_assignment[request] / num_carriers))
+#         unassigned_request_marker(instance, color, request).add_to(m)
 
-    # totals
-    # folium.features.RegularPolygonMarker(location=(48.261738, 16.280746),
-    #                                      number_of_sides=5,
-    #                                      popup=f'Total Duration: {solution.sum_travel_duration}<br>'
-    #                                            f'Total Distance: {round(solution.sum_travel_distance, 2)}<br>'
-    #                                            f'Number of Tours: {solution.num_tours()}<br>'
-    #                                            f'Number of Pendulum Tours: {solution.num_pendulum_tours()}<br>'
-    #                                            f'Avg acceptance rate: {solution.avg_acceptance_rate()}',
-    #                                      tooltip='Totals',
-    #                                      fill_color='blue',
-    #                                      ).add_to(m)
+#     # totals
+#     # folium.features.RegularPolygonMarker(location=(48.261738, 16.280746),
+#     #                                      number_of_sides=5,
+#     #                                      popup=f'Total Duration: {solution.sum_travel_duration}<br>'
+#     #                                            f'Total Distance: {round(solution.sum_travel_distance, 2)}<br>'
+#     #                                            f'Number of Tours: {solution.num_tours()}<br>'
+#     #                                            f'Number of Pendulum Tours: {solution.num_pendulum_tours()}<br>'
+#     #                                            f'Avg acceptance rate: {solution.avg_acceptance_rate()}',
+#     #                                      tooltip='Totals',
+#     #                                      fill_color='blue',
+#     #                                      ).add_to(m)
 
-    m.keep_in_front(*keep_in_front_feautres)
-    path = io.output_dir.joinpath('folium_map.html')
-    folium.LayerControl(collapsed=False).add_to(m)
-    m.save(path.as_posix())
-    webbrowser.open(path)
-    return m
+#     m.keep_in_front(*keep_in_front_feautres)
+#     path = io.output_dir.joinpath('folium_map.html')
+#     folium.LayerControl(collapsed=False).add_to(m)
+#     m.save(path.as_posix())
+#     webbrowser.open(path)
+#     return m
 
 
 def unassigned_request_marker(instance, color, request):
