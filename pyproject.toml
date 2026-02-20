@@ -6,6 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "CACT"
 version = "0.1.0"
 dependencies = [] # Add external libraries here (e.g., "requests", "numpy")
-
-[tool.setuptools.packages.find]
-where = ["src"]  # This tells Python to look in 'src' for your package
+requires-python = ">= 3.10.19"
+authors = [{name = "Steffen Elting"}]
+description = "A python library to model and solve the optimization problems in Combinatorial Auction-based Collaborative Transportation (CACT)."
