@@ -203,6 +203,12 @@ class Carrier:
         self._accepted_requests.append(request)
         self._unrouted_requests.append(request)
 
+    def reject_request(self, request: Request):
+        assert request in self.assigned_requests, (
+            f"Request {request} is not assigned to carrier {self.id_} "
+        )
+        self._rejected_requests.append(request)
+
     def plot(self, ax: plt.Axes = None, color="tab:red"):
         if ax is None:
             fig, ax = plt.subplots()

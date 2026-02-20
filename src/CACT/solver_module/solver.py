@@ -107,14 +107,13 @@ class IsolatedSolver(Solver):
                 # if no tws are offered, or no tw was selected by the customer, the request is not accepted, tw is reset
                 request.tw_open = ut.EXECUTION_TIME_HORIZON.open
                 request.tw_close = ut.EXECUTION_TIME_HORIZON.close
-                # todo: below is outdated. check whether the request is in any way connected to the carrier. if not,
+                # TODO: below is outdated. check whether the request is in any way connected to the carrier. if not,
                 #  simply resetting the tw is enough
                 warnings.warn(
                     "Deprecated code! - does not adhere to the latest updates of the carrier class and the "
                     "routing solver. Check and update the code here"
                 )
-                carrier.rejected_requests.append(request)
-                carrier.unrouted_requests.remove(request)
+                carrier.reject_request(request)
                 pass
         pass
 
