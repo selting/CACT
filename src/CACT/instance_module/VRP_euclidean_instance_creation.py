@@ -180,7 +180,7 @@ def generate_euclidean_cr_ahd_instance(
 
 
 if __name__ == "__main__":
-    for num_requests_per_carrier in [8, 16, 32, 64]:
+    for num_requests_per_carrier in [8, 16, 32, 64, 128]:
         for num_clusters_per_carrier, cluster_std in [(None, None), (3, 3)]:
             for run in trange(
                 200,
@@ -206,7 +206,7 @@ if __name__ == "__main__":
                     requests_revenue=1,
                     requests_service_duration=dt.timedelta(minutes=4),
                     requests_load=1,
-                    constant_kmh=30,
+                    constant_kmh=50,  # this must be tuned to match the map size
                     plot=False,
                     save_path=Path("data/instances/euclidean_instances_rev1"),
                 )
