@@ -219,9 +219,6 @@ __marimo__/
 mlruns/
 
 # others
-.vscode/tasks.json
+.vscode/
 src/CACT/data/experiments/cact.db
-
 src/CACT/data/instances/euclidean_instances_rev1 
-.vscode/launch.json
-.vscode/settings.json
