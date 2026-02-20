@@ -1,10 +1,9 @@
 from datetime import datetime
+from pathlib import Path
 
 from solver_module import workflow, config
 from utility_module import io
 from utility_module.argparse_utils import parser
-from importlib.resources import pkg_resources
-
 
 if __name__ == "__main__":
     print("START main.py")
@@ -28,18 +27,18 @@ if __name__ == "__main__":
 
     start = datetime.now()
 
-    paths = io.instance_file_selector(
-        type_=args["type"],
-        distance=args["distance"],
-        num_carriers=args["num_carriers"],
-        num_requests=args["num_requests"],
-        carrier_max_num_tours=args["carrier_max_num_tours"],
-        service_area_overlap=args["service_area_overlap"],
-        run=args["run"],
-    )
+    # paths = io.instance_file_selector(
+    #     type_=args["type"],
+    #     distance=args["distance"],
+    #     num_carriers=args["num_carriers"],
+    #     num_requests=args["num_requests"],
+    #     carrier_max_num_tours=args["carrier_max_num_tours"],
+    #     service_area_overlap=args["service_area_overlap"],
+    #     run=args["run"],
+    # )
 
     paths = io.instance_file_selector_2(
-        pkg_resources.files("data.instances.euclidean_instances"),
+        Path("src/CACT/data/instances/euclidean_instances_rev1"),
         dict(
             type="euclidean",
             dist_center_to_carrier=[25],

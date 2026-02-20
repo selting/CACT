@@ -454,6 +454,7 @@ def instance_file_selector_2(
     if len(matched_files) == 0:
         raise ValueError("No instance existst for the given filter: \n", filter_criteria)
 
+    matched_files = sorted(matched_files)
     return matched_files
 
 
