@@ -1,4 +1,3 @@
-import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from datetime import timedelta
@@ -22,8 +21,8 @@ from tw_management_module.tw_selection import TWSelectionBehavior
 from utility_module import utils as ut, profiling as pr
 from utility_module.parameterized_class import ParameterizedClass, flatten_dict
 from utility_module.pyvrp_helper import scale_problem_data_dict
-from utility_module.utils import ACCEPTANCE_START_TIME, generate_time_windows
-
+from utility_module.utils import generate_time_windows
+from routing_module.objective_function import ObjectiveFunction
 
 class Solver(ParameterizedClass):
     """Abstract class for all solvers"""
@@ -31,10 +30,12 @@ class Solver(ParameterizedClass):
     def __init__(
         self,
         routing_solver: RoutingSolver,
+        objective: ObjectiveFunction,
         time_window_selection: TWSelectionBehavior,
         time_window_length,
     ):
         self.routing_solver: RoutingSolver = routing_solver
+        self.objective: ObjectiveFunction = objective
         self.time_window_selection: TWSelectionBehavior = time_window_selection
         self.time_window_length: timedelta = time_window_length
         self.auction = None
@@ -43,6 +44,7 @@ class Solver(ParameterizedClass):
             "time_window_selection": time_window_selection,
             "time_window_length": time_window_length,
             "routing_solver": routing_solver,
+            "objective": objective,
         }
 
     def execute(self, instance: CAHDInstance):
@@ -66,13 +68,13 @@ class IsolatedSolver(Solver):
         """
 
         # ===== [0] Setup =====
-        solution = CAHDSolution(instance, self.routing_solver)
+        solution = CAHDSolution(instance, self.routing_solver, objective)
 
         # ===== Dynamic Request Arrival Phase =====
         self.request_arrival(instance, solution)
 
         # ===== Final Improvement =====
-        objective = solution.objective
+        objective = solution.objective_value
         # TODO
         # timer = pr.Timer()
         # for carrier in solution.carriers:
@@ -80,8 +82,8 @@ class IsolatedSolver(Solver):
         # timer.stop()
         # mlflow.log_metric('runtime_final_improvement', timer.duration)
 
-        assert objective >= solution.objective, (
-            f"{objective} < {solution.objective} but should be >=!({instance.id_, self.params})"
+        assert solution._objective_function.is_better(solution.objective_value, objective) or solution.objective_value == objective (
+            f"Objective was worse after improvement."
         )
         ut.validate_solution(instance, solution)  # safety check
 
@@ -89,7 +91,7 @@ class IsolatedSolver(Solver):
         pass
 
     def request_arrival(self, instance: CAHDInstance, solution: CAHDSolution):
-        tw_options = generate_time_windows(self.time_window_length)
+        tw_options = generate_time_windows(self.time_window_length, start=instance.execution_time_start, end=instance.execution_time_end)
 
         # consider request in order of their disclosure time. This is *before* vehicles leave the depot
         for request in sorted(instance.requests, key=lambda x: x.disclosure_time):
@@ -97,7 +99,7 @@ class IsolatedSolver(Solver):
 
             tw_offers = carrier.offer_time_windows(instance, request, tw_options)
             if tw_offers:
-                selected_tw = self.time_window_selection.select_tw(tw_offers, request)
+                selected_tw = self.time_window_selection.select_tw(instance, tw_offers, request)
                 if selected_tw:
                     request.tw_open = selected_tw.open
                     request.tw_close = selected_tw.close
@@ -119,12 +121,13 @@ class CollaborativeSolver(IsolatedSolver):
     def __init__(
         self,
         routing_solver: RoutingSolver,
+        objective:ObjectiveFunction,
         time_window_selection: TWSelectionBehavior,
         time_window_length: timedelta,
         request_selection_strategy: RequestSelectionStrategy,
         auction: Auction = False,
     ):
-        super().__init__(routing_solver, time_window_selection, time_window_length)
+        super().__init__(routing_solver, objective, time_window_selection, time_window_length)
         self._request_selection_strategy = request_selection_strategy
         self.auction: Auction = auction
 
@@ -136,7 +139,7 @@ class CollaborativeSolver(IsolatedSolver):
         """
         # ===== [0] Setup =====
         solution = CAHDSolution(
-            instance, self.routing_solver, self._request_selection_strategy
+            instance, self.routing_solver, self.objective, self._request_selection_strategy
         )
 
         # ===== Dynamic Request Arrival Phase =====

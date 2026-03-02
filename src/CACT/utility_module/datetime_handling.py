@@ -92,3 +92,49 @@ def safe_divide_timedelta(a, b, default_value=None):
             result = a_val / b_val
         results.append(result)
     return pd.Series(results, index=a.index)
+
+
+def datetime_range(
+    start: dt.datetime,
+    stop: dt.datetime,
+    step: dt.timedelta = None,
+    num: int = None,
+    startpoint=True,
+    endpoint=True,
+):
+    """
+    returns a generator of equally-spaced datetime objects. Exactly one of step or num must be supplied.
+    """
+
+    assert None in (step, num), f"only one of step or num must be given"
+    if step is not None:
+        assert step.total_seconds() > 0, f"Step shouldn't be 0"
+    if num is not None:
+        assert num > 0, f"Num shouldn't be 0"
+
+    delta = stop - start
+
+    if num:
+        if endpoint and startpoint:
+            div = num - 1
+        elif endpoint or startpoint:
+            div = num
+        else:
+            div = num + 1
+        step = delta / div
+    else:
+        num = delta // step
+        if endpoint and startpoint:
+            num += 1
+        elif endpoint or startpoint:
+            pass
+        else:
+            num -= 1
+
+    if step > delta:  # return only the startpoint
+        return (start for _ in [None])
+
+    if not startpoint:
+        start += step
+
+    return (start + (x * step) for x in range(num))

@@ -39,6 +39,8 @@ class CAHDInstance:
         self.carriers_max_num_tours = carriers_max_num_tours
 
         self.depots: list[Depot] = depots
+        self.execution_time_start = self.depots[0].tw_open
+        self.execution_time_end = self.depots[0].tw_close
         self.requests: list[Request] = requests
         self.num_requests = len(self.requests)
         """total number of requests in the instance (across all carriers)"""
@@ -65,21 +67,24 @@ class CAHDInstance:
                 f"Vertex at index {idx} has uid {vertex.uid}. vertices must be sorted by uid "
                 f"and uids must be strictly increasing without gaps"
             )
-        assert self.requests == sorted(self.requests), (
-            f"Request are not sorted by index: {[r.index for r in self.requests]}"
-        )
+        assert self.requests == sorted(
+            self.requests
+        ), f"Request are not sorted by index: {[r.index for r in self.requests]}"
+
+        for depot in self.depots:
+            assert depot.tw_close == self.depots[0].tw_close, "all depots must open at the same time"
+            assert depot.tw_close == self.depots[0].tw_close, "all depots must close at the same time"
+
         for idx, request in zip(range(len(self.requests)), self.requests):
             assert request.index == idx, (
                 f"Request does not have the correct index. Should be {idx} "
                 f"but is {request.index}"
             )
-            assert (
-                ut.ACCEPTANCE_START_TIME
-                <= request.disclosure_time
-                <= ut.EXECUTION_START_TIME
-            )
-            assert ut.EXECUTION_START_TIME <= request.tw_open <= ut.END_TIME
-            assert ut.EXECUTION_START_TIME <= request.tw_close <= ut.END_TIME
+            execution_start_time = self.depots[0].tw_open
+            execution_stop_time = self.depots[0].tw_close
+            assert (request.disclosure_time <= execution_start_time)
+            assert execution_start_time <= request.tw_open <= execution_stop_time
+            assert execution_start_time <= request.tw_close <= execution_stop_time
             assert request.load <= self.max_vehicle_load
         num_vertices = len(self.depots) + len(self.requests)
         assert (
@@ -178,114 +183,6 @@ class CAHDInstance:
             duration += self._travel_duration_matrix[ii.uid, jj.uid]
         return duration
 
-    def write_json(self, path: Path):
-        data = dict()
-        data["_id_"] = self._id_
-        data["meta"] = self.meta
-        data["num_carriers"] = self.num_carriers
-        data["max_vehicle_load"] = self.max_vehicle_load
-        data["max_tour_distance"] = self.max_tour_distance
-        data["max_tour_duration"] = self.max_tour_duration
-        data["carriers_max_num_tours"] = self.carriers_max_num_tours
-        data["requests"] = [r.index for r in self.requests]
-        data["num_requests"] = self.num_requests
-        data["num_requests_per_carrier"] = self.num_requests // self.num_carriers
-        data["vertex_x_coords"] = [v.x for v in self.vertices]
-        data["vertex_y_coords"] = [v.y for v in self.vertices]
-        data["request_to_carrier_assignment"] = [
-            r.initial_carrier_assignment for r in self.requests
-        ]
-        data["request_disclosure_time"] = [
-            r.disclosure_time.isoformat() for r in self.requests
-        ]
-        data["vertex_revenue"] = [0] * self.num_carriers + [
-            r.revenue for r in self.requests
-        ]
-        data["vertex_load"] = [0] * self.num_carriers + [r.load for r in self.requests]
-        data["vertex_service_duration"] = [0] * self.num_carriers + [
-            r.service_duration.total_seconds() for r in self.requests
-        ]
-        data["tw_open"] = [v.tw_open.isoformat() for v in self.vertices]
-        data["tw_close"] = [v.tw_close.isoformat() for v in self.vertices]
-        data["_travel_duration_matrix"] = self._travel_duration_matrix
-        data["_travel_distance_matrix"] = self._travel_distance_matrix
-        # abort if file already exists
-        if path.exists():
-            raise FileExistsError(f"File {path} already exists")
-        with open(path, "w") as file:
-            json.dump(data, file, cls=MyJSONEncoder, indent=4)
-
-    def write_delim(self, path: Path, delim=","):
-        """
-        it is much easier to read instances from json files
-
-        :param path:
-        :param delim:
-        :return:
-        """
-        lines = [
-            f"# VRP parameters: V = num of vehicles, L = max_load, T = max_tour_length"
-        ]
-        lines.extend(
-            [
-                f"V{delim}{self.carriers_max_num_tours}",
-                f"L{delim}{self.max_vehicle_load}",
-                f"T{delim}{self.max_tour_distance}\n",
-            ]
-        )
-        lines.extend(
-            [
-                "# carrier depots: C x y",
-                "# one line per carrier, number of carriers defined by number of lines",
-            ]
-        )
-        lines.extend(
-            [
-                f"C{delim}{x}{delim}{y}"
-                for x, y in zip(
-                    self.vertex_x_coords[: self.num_carriers],
-                    self.vertex_y_coords[: self.num_carriers],
-                )
-            ]
-        )
-        lines.extend(
-            [
-                "\n# requests: carrier_index delivery_x delivery_y revenue",
-                "# carrier_index = line index of carriers above",
-            ]
-        )
-        for request in self.requests:
-            lines.append(
-                f"{self.request_to_carrier_assignment[request]}{delim}"
-                f"{self.vertex_x_coords[request + self.num_carriers]}{delim}"
-                f"{self.vertex_y_coords[request + self.num_carriers]}{delim}"
-                f"{self.vertex_revenue[request + self.num_carriers]}"
-            )
-
-        lines.append(
-            f"\n# travel duration in seconds. initial entries correspond to depots"
-        )
-
-        for i in range(len(self._travel_duration_matrix)):
-            lines.append(
-                delim.join(
-                    [str(x.total_seconds()) for x in self._travel_duration_matrix[i]]
-                )
-            )
-
-        lines.append(
-            f"\n# travel distance in meters. initial entries correspond to depots"
-        )
-
-        for i in range(len(self._travel_distance_matrix)):
-            # lines.append(delim.join([str(x) for x in self._travel_distance_matrix[i]]))
-            lines.append(delim.join(map(str, self._travel_distance_matrix[i])))
-
-        with path.open("w") as f:
-            f.writelines([l + "\n" for l in lines])
-
-        pass
-
     @cached_property
     def _time_window_distance_matrix(self):
         """
@@ -371,15 +268,56 @@ class CAHDInstance:
                 ) / denom
         return matrix
 
+    def write_json(self, path: Path):
+        data = dict()
+        data["_id_"] = self._id_
+        data["meta"] = self.meta
+        data["num_carriers"] = self.num_carriers
+        data["max_vehicle_load"] = self.max_vehicle_load
+        data["max_tour_distance"] = self.max_tour_distance
+        data["max_tour_duration"] = self.max_tour_duration
+        data["carriers_max_num_tours"] = self.carriers_max_num_tours
+        data["requests"] = [r.index for r in self.requests]
+        data["num_requests"] = self.num_requests
+        data["num_requests_per_carrier"] = self.num_requests // self.num_carriers
+        data["vertex_x_coords"] = [v.x for v in self.vertices]
+        data["vertex_y_coords"] = [v.y for v in self.vertices]
+        data["request_to_carrier_assignment"] = [
+            r.initial_carrier_assignment for r in self.requests
+        ]
+        data["request_disclosure_time"] = [
+            r.disclosure_time.isoformat() for r in self.requests
+        ]
+        data["vertex_revenue"] = [None] * self.num_carriers + [
+            r.revenue for r in self.requests
+        ]
+        data["vertex_load"] = [None] * self.num_carriers + [r.load for r in self.requests]
+        data["vertex_service_duration"] = [None] * self.num_carriers + [
+            r.service_duration.total_seconds() for r in self.requests
+        ]
+        data["tw_open"] = [v.tw_open.isoformat() for v in self.vertices]
+        data["tw_close"] = [v.tw_close.isoformat() for v in self.vertices]
+        data["_travel_duration_matrix"] = self._travel_duration_matrix
+        data["_travel_distance_matrix"] = self._travel_distance_matrix
+        # abort if file already exists
+        if path.exists():
+            raise FileExistsError(f"File {path} already exists")
+        with open(path, "w") as file:
+            json.dump(data, file, cls=MyJSONEncoder, indent=3)
+
     @classmethod
     def from_json(cls, path: Path):
         with open(path, "r") as file:
             inst = dict(json.load(file))
+
         inst["_travel_duration_matrix"] = [
             [dt.timedelta(seconds=y) for y in x]
             for x in inst["_travel_duration_matrix"]
         ]
-        inst["max_tour_duration"] = dt.timedelta(seconds=inst["max_tour_duration"])
+        if inst["max_tour_duration"] == 86400000000000:
+            inst["max_tour_duration"] = dt.timedelta.max
+        else:
+            inst["max_tour_duration"] = dt.timedelta(seconds=inst["max_tour_duration"])
 
         depots: list[Depot] = []
         for depot_idx in range(inst["num_carriers"]):

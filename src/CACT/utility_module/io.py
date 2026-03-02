@@ -91,140 +91,6 @@ class MyJSONEncoder(json.JSONEncoder):
             return super().default(o)
 
 
-# class CAHDSolutionSummaryCollection:
-#     def __init__(self, solutions: list[Dict]):
-#         self.summaries = solutions
-
-
-def solutions_to_df(solutions, agg_level: str):
-    """
-    :param solutions: A List of solutions.
-    :param agg_level: defines up to which level the solution will be
-    summarized/aggregated. E.g. if agg_level='carrier', the returned pd.DataFrame contains infos per carrier but not
-    per tour since tours are aggregated for each carrier.
-    """
-    assert solutions, f"No solutions available"
-    df = []
-    for solution in solutions:
-        if agg_level == "solution":
-            record: dict = solution.summary()
-            record.pop("carrier_summaries")
-            # replace None with np.nan if the feature is numeric
-            record = {
-                k: (np.nan if (k in numeric_columns and v is None) else v)
-                for k, v in record.items()
-            }
-            df.append(record)
-
-        elif agg_level == "carrier":
-            raise NotImplementedError(
-                "override of dictionary is not secure yet. E.g. timings will be copied"
-            )
-            for carrier in solution.carriers:
-                record = solution.summary()
-                record.pop("carrier_summarCAHDInstance(ies")
-                record.update(carrier.summary())
-                record.pop("tour_summaries")
-                df.append(record)
-
-        elif agg_level == "tour":
-            raise NotImplementedError(
-                "override of dictionary is not secure yet. E.g. timings will be copied"
-            )
-            for carrier in solution.carriers:
-                for tour in carrier.tours:
-                    record = solution.summary()
-                    record.pop("carrier_summaries")
-                    record.update(carrier.summary())
-                    record.pop("tour_summaries")
-                    record.update(tour.summary())
-                    df.append(record)
-
-        else:
-            raise ValueError('agg_level must be one of "solution", "carrier" or "tour"')
-
-    df = pd.DataFrame.from_records(df)
-
-    # convert timedelta to seconds
-    df["time_window_length_hours"] = df["time_window_length"].dt.total_seconds() / (
-        60**2
-    )
-    for column in df.select_dtypes(include=["timedelta64"]):
-        df[column] = df[column].dt.total_seconds()
-
-    return df
-
-
-def auctions_results_to_df(auctions):
-    assert auctions, f"No auctions available"
-    df = []
-    for auction in auctions:
-        record: dict = auction.summary()
-        record.pop("auction_request_pool")
-        record.pop("original_assignment")
-        record.pop("auction_bundle_pool")
-        record.pop("bids_matrix")
-        record.pop("winner_assignment")
-        record.pop("original_bundle_bids")
-        record.pop("winner_bundle_bids")
-
-        # replace None with np.nan if the feature is numeric
-        record = {
-            k: (np.nan if (k in numeric_columns and v is None) else v)
-            for k, v in record.items()
-        }
-        # convert timedelta to seconds
-        record["time_window_length"] = record["time_window_length"].total_seconds()
-        # record['bids_on_original_bundles'] = [x.total_seconds() for x in record['bids_on_original_bundles'] if x]
-        # record['bids_matrix'] = [[y.total_seconds() for y in x] for x in record['bids_matrix']]
-        # record['bids_on_winner_bundles'] = [x.total_seconds() for x in record['bids_on_winner_bundles'] if x]
-
-        df.append(record)
-
-    df = pd.DataFrame.from_records(df)
-
-    # add convenience columns
-    for col_name in df.columns:
-        if ("duration" in col_name and "rel_" not in col_name) or (
-            col_name == "time_window_length"
-        ):
-            df.insert(
-                loc=df.columns.get_loc(col_name) + 1,
-                column=col_name + "_hours",
-                value=df[col_name] / 60**2,
-            )
-            df.insert(
-                loc=df.columns.get_loc(col_name) + 1,
-                column=col_name + "_minutes",
-                value=df[col_name] / 60,
-            )
-    return df
-
-
-def auctions_bundle_pools_to_df(auctions: Sequence):
-    """
-    collect all auctions' generated bundles in a df with initial columns indicating the instance.id_ and the solver
-    config. further columns are the generated bundles. Some records may be shorter due to fewer bundles
-
-
-    :param auctions:
-    :return:
-    """
-    df = []
-    for auction in auctions:
-        auction_bundle_dict = {
-            f"bundle_{i:03d}": b for i, b in enumerate(auction.auction_bundle_pool)
-        }
-        record: dict = dict(
-            **auction.meta,
-            **auction.solver_config,
-            **auction_bundle_dict,
-        )
-        df.append(record)
-    df = pd.DataFrame.from_records(df)
-    return df
-
-
 def unique_path(directory, name_pattern) -> Path:
     """
     construct a unique numbered file name based on a template.
@@ -450,11 +316,12 @@ def instance_file_selector_2(
 
         except (json.JSONDecodeError, PermissionError) as e:
             print(f"Skipping {file_path.name}: {e}")
-        
-    if len(matched_files) == 0:
-        raise ValueError("No instance existst for the given filter: \n", filter_criteria)
 
-    matched_files = sorted(matched_files)
+    if len(matched_files) == 0:
+        raise ValueError(
+            "No instance existst for the given filter: \n", filter_criteria
+        )
+
     return matched_files
 
 

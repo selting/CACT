@@ -96,7 +96,7 @@ def select_query(pool, queries_and_responses):
 
 
 def ask_carrier(carrier: Carrier, bundle: Bundle, pool: Sequence[Request]):
-    without_bundles = carrier.objective
+    without_bundles = carrier.objective_value
 
     routing = PyVrpRouting()  # TODO this should be a parameter
     tmp_carrier = deepcopy(carrier)
@@ -104,7 +104,7 @@ def ask_carrier(carrier: Carrier, bundle: Bundle, pool: Sequence[Request]):
         tmp_carrier.assign_request(request, True)
     tmp_carrier.tours = routing.solve(inst, tmp_carrier.depot, tmp_carrier.accepted_requests,
                                       tmp_carrier.max_num_tours, MaxRuntime, 2)
-    with_bundles = tmp_carrier.objective
+    with_bundles = tmp_carrier.objective_value
     return with_bundles - without_bundles
 
 

@@ -10,10 +10,10 @@ from core_module.depot import Depot
 from core_module.instance import CAHDInstance
 from core_module.request import Request
 from core_module.tour import Tour
+from routing_module.objective_function import ObjectiveFunction
 from utility_module.datetime_handling import total_seconds_vectorized
 from utility_module.parameterized_class import ParameterizedClass
-from utility_module.utils import ACCEPTANCE_START_TIME, EXECUTION_START_TIME, END_TIME
-from .insertion_criterion import InsertionCriterion
+# from utility_module.utils import ACCEPTANCE_START_TIME, EXECUTION_START_TIME, END_TIME
 
 
 class StaticRouting(ParameterizedClass):
@@ -23,6 +23,7 @@ class StaticRouting(ParameterizedClass):
         instance: CAHDInstance,
         depot: Depot,
         requests: list[Request],
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         pass
@@ -34,6 +35,7 @@ class StaticRouting(ParameterizedClass):
 class StaticSequentialInsertion(StaticRouting):
     """
     Insert requests in the order in which they are supplied. Once a route is full, the next one is opened.
+    Ignores the objective.
     """
 
     def __call__(
@@ -41,6 +43,7 @@ class StaticSequentialInsertion(StaticRouting):
         instance: CAHDInstance,
         depot: Depot,
         requests: list[Request],
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         tours = [Tour(i, depot) for i in range(max_num_tours)]
@@ -54,12 +57,13 @@ class StaticSequentialInsertion(StaticRouting):
 
 
 class StaticSequentialCheapestInsertion(StaticRouting):
-    def __init__(self, sequence_key: Callable, insertion_criterion: InsertionCriterion):
+    def __init__(
+        self,
+        sequence_key: Callable,
+    ):
         self._sequence_key = sequence_key
-        self._insertion_criterion = insertion_criterion
         self._params = {
             "sequence_key": sequence_key,
-            "insertion_criterion": insertion_criterion,
         }
 
     def __call__(
@@ -67,12 +71,13 @@ class StaticSequentialCheapestInsertion(StaticRouting):
         instance: CAHDInstance,
         depot: Depot,
         requests: list[Request],
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         tours = [Tour(vehicle_idx, depot) for vehicle_idx in range(max_num_tours)]
         for request in sorted(requests, key=self._sequence_key):
             tours = self._request_insertion(
-                instance, tours, depot, request, max_num_tours
+                instance, tours, depot, request, objective, max_num_tours
             )
         return tours
 
@@ -82,27 +87,46 @@ class StaticSequentialCheapestInsertion(StaticRouting):
         tours: list[Tour],
         depot: Depot,
         request: Request,
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
+        """Insert the given request into one of the provided tours. The request will be inserted in the best tour at the best location according to the objective function.
+        Every tour and every insertion position will be considered. No rerouting of already routed requests is done.
+
+        Args:
+            instance (CAHDInstance): _description_
+            tours (list[Tour]): _description_
+            depot (Depot): _description_
+            request (Request): _description_
+            objective (ObjectiveFunction): _description_
+            max_num_tours (int): _description_
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            list[Tour]: A list of the updated tours, now including the given request
+        """
         # duplicate, because of circular import issues
         new_tours = list(deepcopy(tours))
         # 1. find the best insertion tour and position, also considering opening a new tour
-        best_criterion = float("inf")
+        overall_best_criterion = objective.worst
         best_tour = "infeasible"
         best_pos = "infeasible"
 
         # check the existing tours
         for tour in new_tours:
-            tour_best_delta = float("inf")
+            tour_best_criterion = objective.worst
             tour_best_pos = None
             for pos in range(1, len(tour)):
                 if tour.insertion_feasibility_check(instance, [pos], [request]):
-                    criterion = self._insertion_criterion(instance, tour, pos, request)
-                    if criterion < tour_best_delta:
-                        tour_best_delta = criterion
+                    # criterion = self._insertion_criterion(instance, tour, pos, request)
+                    criterion = objective.insertion_criterion(instance, tour, pos, request)
+                    if objective.is_better(criterion, tour_best_criterion):
+                        tour_best_criterion = criterion
                         tour_best_pos = pos
-            if tour_best_delta < best_criterion:
-                best_criterion = tour_best_delta
+            if objective.is_better(tour_best_criterion, overall_best_criterion):
+                overall_best_criterion = tour_best_criterion
                 best_tour = tour
                 best_pos = tour_best_pos
 
@@ -110,10 +134,11 @@ class StaticSequentialCheapestInsertion(StaticRouting):
         if len(new_tours) < max_num_tours:
             tour = Tour(len(new_tours), depot)
             pos = 1
-            criterion = self._insertion_criterion(instance, tour, pos, request)
+            # criterion = self._insertion_criterion(instance, tour, pos, request)
+            criterion = objective.insertion_criterion(instance, tour, pos, request)
             # criterion = criterion * 0.75  # to facilitate opening new tours, only .75 of the pendulum's criterion is accounted for
-            if criterion < best_criterion:
-                best_criterion = criterion
+            if objective.is_better(criterion, overall_best_criterion):
+                overall_best_criterion = criterion
                 best_tour = tour
                 best_pos = pos
 
@@ -128,15 +153,12 @@ class StaticSequentialCheapestInsertion(StaticRouting):
 
 
 class StaticCheapestCheapestInsertion(StaticRouting):
-    def __init__(self, insertion_criterion: InsertionCriterion):
-        self.insertion_criterion = insertion_criterion
-        self._params = {"insertion_criterion": insertion_criterion}
-
     def __call__(
         self,
         instance: CAHDInstance,
         depot: Depot,
         requests: list[Request],
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         tours = [Tour(vehicle_idx, depot) for vehicle_idx in range(max_num_tours)]
@@ -144,30 +166,28 @@ class StaticCheapestCheapestInsertion(StaticRouting):
         routed_requests = []
         pbar = tqdm(total=len(requests))
         while unrouted_requests:
-            best_delta = float("inf")
+            best_delta = objective.worst
             best_request = None
             best_pos = None
             for request in unrouted_requests:
                 request_best_tour = None
                 request_best_pos = None
-                request_best_delta = float("inf")
+                request_best_delta = objective.worst
                 for tour in tours:
-                    tour_best_delta = float("inf")
+                    tour_best_delta = objective.worst
                     tour_best_pos = None
                     for pos in range(1, len(tour)):
-                        # TODO: decouple the max_distance and duration from the instance?
                         if tour.insertion_feasibility_check(instance, [pos], [request]):
-                            delta = self.insertion_criterion(
-                                instance, tour, pos, request
-                            )
-                            if delta < tour_best_delta:
+                            # delta = self.insertion_criterion( instance, tour, pos, request)
+                            delta = objective.insertion_criterion(instance, tour, pos, request)
+                            if objective.is_better(delta, tour_best_delta):
                                 tour_best_delta = delta
                                 tour_best_pos = pos
-                    if tour_best_delta < request_best_delta:
+                    if objective.is_better(tour_best_delta, request_best_delta):
                         request_best_delta = tour_best_delta
                         request_best_pos = tour_best_pos
                         request_best_tour = tour
-                if request_best_delta < best_delta:
+                if objective.is_better(request_best_delta, best_delta):
                     best_delta = request_best_delta
                     best_request = request
                     best_pos = request_best_pos
@@ -194,8 +214,10 @@ class StaticPyVrp(StaticRouting):
         instance: CAHDInstance,
         depot: Depot,
         requests: list[Request],
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
+        raise NotImplementedError("PyVRP interface not yet adapted to work with the new Objective class")
         pyvrp_problem_data = self._convert_instance_to_pyvrp_data(
             instance, depot, requests, max_num_tours
         )

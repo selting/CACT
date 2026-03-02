@@ -5,8 +5,8 @@ from core_module.depot import Depot
 from core_module.instance import CAHDInstance
 from core_module.request import Request
 from core_module.tour import Tour
+from routing_module.objective_function import ObjectiveFunction
 from utility_module.parameterized_class import ParameterizedClass
-from .insertion_criterion import InsertionCriterion
 from .static_routing import StaticPyVrp
 
 
@@ -24,6 +24,7 @@ class DynamicRouting(ParameterizedClass):
         tours: list[Tour],
         depot: Depot,
         request: Request,
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         """
@@ -37,10 +38,6 @@ class DynamicRouting(ParameterizedClass):
 
 
 class DynamicCheapestInsertion(DynamicRouting):
-    def __init__(self, insertion_criterion: InsertionCriterion):
-        self._insertion_criterion = insertion_criterion
-        self._params = {"insertion_criterion": insertion_criterion}
-
     def __repr__(self):
         return self.__class__.__name__
 
@@ -50,26 +47,28 @@ class DynamicCheapestInsertion(DynamicRouting):
         tours: list[Tour],
         depot: Depot,
         request: Request,
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         new_tours = list(deepcopy(tours))
         # 1. find the best insertion tour and position, also considering opening a new tour
-        best_criterion = float("inf")
+        overall_best_criterion = objective.worst
         best_tour = "infeasible"
         best_pos = "infeasible"
 
         # check the existing tours
         for tour in new_tours:
-            tour_best_delta = float("inf")
+            tour_best_criterion = objective.worst
             tour_best_pos = None
             for pos in range(1, len(tour)):
                 if tour.insertion_feasibility_check(instance, [pos], [request]):
-                    criterion = self._insertion_criterion(instance, tour, pos, request)
-                    if criterion < tour_best_delta:
-                        tour_best_delta = criterion
+                    # criterion = self._insertion_criterion(instance, tour, pos, request)
+                    criterion = objective.insertion_criterion(instance, tour, pos, request)
+                    if objective.is_better(criterion, tour_best_criterion):
+                        tour_best_criterion = criterion
                         tour_best_pos = pos
-            if tour_best_delta < best_criterion:
-                best_criterion = tour_best_delta
+            if objective.is_better(tour_best_criterion, overall_best_criterion):
+                overall_best_criterion = tour_best_criterion
                 best_tour = tour
                 best_pos = tour_best_pos
 
@@ -77,10 +76,11 @@ class DynamicCheapestInsertion(DynamicRouting):
         if len(new_tours) < max_num_tours:
             tour = Tour(len(new_tours), depot)
             pos = 1
-            criterion = self._insertion_criterion(instance, tour, pos, request)
+            # criterion = self._insertion_criterion(instance, tour, pos, request)
+            criterion = objective.insertion_criterion(instance, tour, pos, request)
             # criterion = criterion * 0.75  # to facilitate opening new tours, only .75 of the pendulum's criterion is accounted for
-            if criterion < best_criterion:
-                best_criterion = criterion
+            if objective.is_better(criterion, overall_best_criterion):
+                overall_best_criterion = criterion
                 best_tour = tour
                 best_pos = pos
 
@@ -114,6 +114,7 @@ class DynamicPyVrp(DynamicRouting):
         request: Request,
         max_num_tours: int,
     ) -> list[Tour]:
+        raise NotImplementedError("PyVRP does not yet work with the new Objective class")
         all_requests = []
         for tour in tours:
             all_requests += list(tour.requests)

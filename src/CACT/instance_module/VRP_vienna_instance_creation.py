@@ -17,6 +17,7 @@ from shapely.geometry import Point
 from shapely.ops import nearest_points
 
 import utility_module.geometry as geo
+from utility_module.datetime_handling import datetime_range
 from core_module import instance as it
 from instance_module.vienna_data_handling import read_vienna_addresses
 from utility_module import io, utils as ut
@@ -189,7 +190,7 @@ def generate_vienna_cr_ahd_instance(
     vienna_requests["disclosure_time"] = None
     for name, group in vienna_requests.groupby(["carrier"]):
         vienna_requests.loc[group.label, "disclosure_time"] = list(
-            ut.datetime_range(
+            datetime_range(
                 start=ut.ACCEPTANCE_START_TIME,
                 stop=ut.EXECUTION_START_TIME,
                 num=len(group),

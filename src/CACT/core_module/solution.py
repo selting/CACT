@@ -5,6 +5,7 @@ from typing import Sequence
 import pyvrp
 from matplotlib import pyplot as plt
 
+from routing_module.objective_function import ObjectiveFunction
 import utility_module.io as io
 from auction_module.bundle_generation.assignment_based.assignment import Assignment
 from auction_module.request_selection.request_selection import RequestSelectionStrategy
@@ -16,43 +17,51 @@ from routing_module.routing_solver import RoutingSolver
 
 
 class CAHDSolution:
-    def __init__(self, instance: CAHDInstance,
-                 routing_solver: RoutingSolver,
-                 request_selection_strategy: RequestSelectionStrategy = None,
-                 objective: str = 'duration', ):
+    def __init__(
+        self,
+        instance: CAHDInstance,
+        routing_solver: RoutingSolver,
+        objective: ObjectiveFunction,
+        request_selection_strategy: RequestSelectionStrategy = None,
+    ):
         self.id_: str = instance.id_
         self.meta: dict[str, int] = instance.meta
-        assert objective in ['duration', 'distance'], \
-            f'Objective must be either "duration" or "distance", not {objective}'
-        self._objective = objective
+        self._objective_function = objective
 
         self._carriers = []
         for idx in range(instance.num_carriers):
-            carrier = Carrier(idx, str(idx), instance.depots[idx], objective, instance.carriers_max_num_tours,
-                              routing_solver, request_selection_strategy)
+            carrier = Carrier(
+                idx,
+                str(idx),
+                instance.depots[idx],
+                objective,
+                instance.carriers_max_num_tours,
+                routing_solver,
+                request_selection_strategy,
+            )
             self._carriers.append(carrier)
 
     def __str__(self):
-        s = f'Solution {self.id_}\nObjective={self.objective}'
-        s += '\n'
+        s = f"Solution {self.id_}\nObjective={self.objective_value}"
+        s += "\n"
         for c in self.carriers:
             s += str(c)
-            s += '\n'
+            s += "\n"
         return s
 
     def __repr__(self):
-        return f'CAHDSolution for {self.id_}'
+        return f"CAHDSolution for {self.id_}"
 
     @property
-    def carriers(self):
+    def carriers(self) -> tuple[Carrier]:
         return tuple(self._carriers)
 
     @property
-    def objective(self):
-        if self._objective == 'duration':
-            return self.sum_travel_duration
-        elif self._objective == 'distance':
-            return self.sum_travel_distance
+    def objective_value(self):
+        sum_obj = 0
+        for carrier in self.carriers:
+            sum_obj += carrier.objective_value
+        return sum_obj
 
     @property
     def metrics(self):
@@ -67,14 +76,14 @@ class CAHDSolution:
         """
         return {
             # 'objective': self.objective,
-            'sum_travel_distance': self.sum_travel_distance,
-            'sum_travel_duration': self.sum_travel_duration,
-            'sum_wait_duration': self.sum_wait_duration(),
-            'sum_service_duration': self.sum_service_duration(),
-            'sum_idle_duration': self.sum_idle_duration(),
+            "sum_travel_distance": self.sum_travel_distance,
+            "sum_travel_duration": self.sum_travel_duration,
+            "sum_wait_duration": self.sum_wait_duration(),
+            "sum_service_duration": self.sum_service_duration(),
+            "sum_idle_duration": self.sum_idle_duration(),
             # 'sum_revenue': self.sum_revenue(),
-            'utilization': self.utilization(),
-            'num_tours': self.num_tours(),
+            "utilization": self.utilization(),
+            "num_tours": self.num_tours(),
             # 'num_routing_stops': self.num_routing_stops(),
             # 'acceptance_rate': self.avg_acceptance_rate(),
         }
@@ -142,34 +151,45 @@ class CAHDSolution:
         return {carrier.id_: carrier.as_dict() for carrier in self.carriers}
 
     def summary(self):
-        summary = {**self.meta, }
+        summary = {
+            **self.meta,
+        }
         summary.update(self.solver_config)
-        summary.update({
-            # 'num_carriers': self.num_carriers(),
-            'objective': self.objective,
-            # 'sum_profit': self.sum_profit(),
-            'sum_travel_distance': self.sum_travel_distance,
-            'sum_travel_duration': self.sum_travel_duration,
-            'sum_wait_duration': self.sum_wait_duration(),
-            'sum_service_duration': self.sum_service_duration(),
-            'sum_idle_duration': self.sum_idle_duration(),
-            'sum_load': self.sum_load(),
-            'sum_revenue': self.sum_revenue(),
-            'utilization': self.utilization(),
-            'num_tours': self.num_tours(),
-            'num_routing_stops': self.num_routing_stops(),
-            'acceptance_rate': self.avg_acceptance_rate(),
-            **self.logger,
-            'carrier_summaries': {c.id_: c.summary() for c in self.carriers}
-        })
+        summary.update(
+            {
+                # 'num_carriers': self.num_carriers(),
+                "objective": self.objective_value,
+                # 'sum_profit': self.sum_profit(),
+                "sum_travel_distance": self.sum_travel_distance,
+                "sum_travel_duration": self.sum_travel_duration,
+                "sum_wait_duration": self.sum_wait_duration(),
+                "sum_service_duration": self.sum_service_duration(),
+                "sum_idle_duration": self.sum_idle_duration(),
+                "sum_load": self.sum_load(),
+                "sum_revenue": self.sum_revenue(),
+                "utilization": self.utilization(),
+                "num_tours": self.num_tours(),
+                "num_routing_stops": self.num_routing_stops(),
+                "acceptance_rate": self.avg_acceptance_rate(),
+                **self.logger,
+                "carrier_summaries": {c.id_: c.summary() for c in self.carriers},
+            }
+        )
 
         return summary
 
     def to_json(self):
-        path = io.cr_ahd_solution_dir.joinpath(self.id_ + '_' + self.solver_config['solution_algorithm'])
-        path = io.unique_path(path.parent, path.stem + '_#{:03d}' + '.json')
-        with open(path, mode='w') as f:
-            json.dump({'summary': self.summary(), 'solution': self.as_dict()}, f, indent=4, cls=io.MyJSONEncoder)
+        path = io.cr_ahd_solution_dir.joinpath(
+            self.id_ + "_" + self.solver_config["solution_algorithm"]
+        )
+        path = io.unique_path(path.parent, path.stem + "_#{:03d}" + ".json")
+        with open(path, mode="w") as f:
+            json.dump(
+                {"summary": self.summary(), "solution": self.as_dict()},
+                f,
+                indent=4,
+                cls=io.MyJSONEncoder,
+            )
         pass
 
     def clear_carrier_routes(self, carriers: Sequence[Carrier]):
@@ -210,8 +230,13 @@ class CAHDSolution:
                 yield r
 
     @classmethod
-    def from_pyvrp(cls, instance: CAHDInstance, solution: pyvrp.Solution, problem_data: pyvrp.ProblemData,
-                   objective: str):
+    def from_pyvrp(
+        cls,
+        instance: CAHDInstance,
+        solution: pyvrp.Solution,
+        problem_data: pyvrp.ProblemData,
+        objective: str,
+    ):
         """
         Create a CAHDSolution from a PyVRP solution. This is the only way to create a CAHDSolution currently.
         The PyVRP solution is a scaled solution, i.e. the travel distance and duration are scaled by the number of
@@ -222,7 +247,9 @@ class CAHDSolution:
         :param objective: The objective of the solution, either 'duration' or 'distance'
         :return: CAHDSolution
         """
-        carriers_tours: dict[int, list[Tour]] = {i: [] for i in range(len(problem_data.depots()))}
+        carriers_tours: dict[int, list[Tour]] = {
+            i: [] for i in range(len(problem_data.depots()))
+        }
 
         for pyvrp_route_idx, pyvrp_route in enumerate(solution.routes()):
             depot_idx: int = pyvrp_route.start_depot()
@@ -230,17 +257,24 @@ class CAHDSolution:
 
             tour = Tour(pyvrp_route_idx, depot)
 
-            for insertion_idx, pyvrp_client_idx in enumerate(pyvrp_route.visits(), start=1):
+            for insertion_idx, pyvrp_client_idx in enumerate(
+                pyvrp_route.visits(), start=1
+            ):
                 pyvrp_location = problem_data.location(pyvrp_client_idx)
                 request = instance.vertices[int(pyvrp_location.name)]
-                if tour.insertion_feasibility_check(instance, [insertion_idx], [request]):
+                if tour.insertion_feasibility_check(
+                    instance, [insertion_idx], [request]
+                ):
                     tour.insert_and_update(instance, [insertion_idx], [request])
                 else:
-                    print(f'Insertion of request {request} at position {insertion_idx} in tour {tour} is not feasible')
+                    print(
+                        f"Insertion of request {request} at position {insertion_idx} in tour {tour} is not feasible"
+                    )
                     raise ValueError
 
             carriers_tours[depot_idx].append(tour)
-
+                #  MinDuration()
+                # MinDistance(),  # TODO consider moving the routing criterion/objective to the carrier class and pass it from there??
         output = cls(instance, objective)
 
         for carrier in output.carriers:
@@ -253,7 +287,11 @@ class CAHDSolution:
 
         return output
 
-    def plot(self, ax: plt.Axes = None, print_stats=('sum_travel_duration', 'sum_travel_distance')):
+    def plot(
+        self,
+        ax: plt.Axes = None,
+        print_stats=("sum_travel_duration", "sum_travel_distance"),
+    ):
         """
         Plot the solution using matplotlib. The solution is plotted as a scatter plot of the requests and the tours
         are plotted as lines connecting the requests.
@@ -265,20 +303,28 @@ class CAHDSolution:
         else:
             fig = ax.figure
 
-        for carrier, color in zip(self.carriers, ['red', 'blue', 'green']):
+        for carrier, color in zip(self.carriers, ["red", "blue", "green"]):
             carrier.plot(ax=ax, color=color)
 
         # add the duration and distance as text to the plot
         vert = 1
         for stat in print_stats:
             stat_value = getattr(self, stat)
-            if isinstance(stat_value, dt.timedelta):  # format as nice looking string representation
+            if isinstance(
+                stat_value, dt.timedelta
+            ):  # format as nice looking string representation
                 stat_value = str(stat_value)
             else:
-                stat_value = f'{stat_value:.2f}'
-            ax.text(0.5, vert, f'{stat}: {stat_value}',
-                    transform=ax.transAxes, fontsize=12,
-                    verticalalignment='bottom', horizontalalignment='center')
+                stat_value = f"{stat_value:.2f}"
+            ax.text(
+                0.5,
+                vert,
+                f"{stat}: {stat_value}",
+                transform=ax.transAxes,
+                fontsize=12,
+                verticalalignment="bottom",
+                horizontalalignment="center",
+            )
             vert += 0.05
 
         return fig, ax

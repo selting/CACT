@@ -17,7 +17,6 @@ from core_module.tour import Tour
 from tw_management_module.time_window import TimeWindow
 from utility_module import utils as ut
 from utility_module.geometry import compute_angle_degrees
-from utility_module.utils import EXECUTION_START_TIME
 
 
 class Bundle:
@@ -37,7 +36,7 @@ class Bundle:
         self._requests = tuple(sorted(bundle_items))
 
     def __repr__(self):
-        return "Bundle(" + ", ".join(str(x.uid) for x in self.requests) + ")"
+        return "Bundle(" + ", ".join(str(x.index) for x in self.requests) + ")"
 
     def __len__(self):
         return len(self.requests)
@@ -365,6 +364,8 @@ class Bundle:
     @cached_property
     def mean_time_window_center(self) -> float:
         """mean of the time window centers of all bundle members. returned as timedelta since datetime.datetime.min"""
+        raise NotImplementedError("This property has not been updated since commit with hash f1ffeacb54f9730bd1d92e85c73d282486706727 after which" \
+        "the time dimension is being handeled via the instances ")
         time_window_centers = [
             TimeWindow(request.tw_open, request.tw_close).center
             for request in self.requests

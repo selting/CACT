@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 
 from auction_module.bundle_generation.bundle_based.bundle import Bundle
 from auction_module.request_selection.request_selection import RequestSelectionStrategy
+from routing_module.objective_function import ObjectiveFunction
 from routing_module.routing_solver import RoutingSolver
 from tw_management_module.time_window import TimeWindow
 from .depot import Depot
@@ -21,7 +22,7 @@ class Carrier:
         carrier_index: int,
         label: str,
         depot: Depot,
-        objective: str,
+        objective: ObjectiveFunction,
         max_num_tours: int,
         routing_solver: RoutingSolver,
         request_selection_strategy: RequestSelectionStrategy = None,
@@ -29,13 +30,7 @@ class Carrier:
         self.id_ = carrier_index
         self.label = label
         self.depot = depot
-        # TODO: having assert statements in "production" code is bad style! Check python args -O -OO, and replace MOST
-        #  asserts with exceptions
-        assert objective in [
-            "distance",
-            "duration",
-        ], f'Objective must be either "distance" or "duration", not {objective}'
-        self._objective = objective
+        self._objective_function = objective
 
         self.max_num_tours = max_num_tours
         self._routing_solver = routing_solver
@@ -83,15 +78,16 @@ class Carrier:
         return len(self.accepted_requests) / len(self.assigned_requests)
 
     @property
-    def objective(self):
-        if self._objective == "distance":
-            return self.sum_travel_distance
-        elif self._objective == "duration":
-            return self.sum_travel_duration
-
-    @property
     def tours(self):
         return tuple(self._tours)
+
+    @property
+    def objective_value(self):
+        sum_obj = 0
+        for tour in self.tours:
+            tour_obj = self._objective_function.evaluate(tour)
+            sum_obj += tour_obj
+        return sum_obj
 
     def num_routing_stops(self):
         regular = sum(t.num_routing_stops for t in self._tours)
@@ -99,25 +95,29 @@ class Carrier:
 
     @property
     def sum_travel_distance(self):
-        regular = sum(t.sum_travel_distance for t in self._tours)
-        return regular
+        sum_travel_dist = sum(t.sum_travel_distance for t in self._tours)
+        return sum_travel_dist
 
     @property
     def sum_travel_duration(self):
-        regular = sum((t.sum_travel_duration for t in self._tours), dt.timedelta(0))
-        return regular
+        sum_travel_dur = sum(
+            (t.sum_travel_duration for t in self._tours), dt.timedelta(0)
+        )
+        return sum_travel_dur
 
     def sum_wait_duration(self):
-        regular = sum((t.sum_wait_duration for t in self._tours), dt.timedelta(0))
-        return regular
+        sum_wait_dur = sum((t.sum_wait_duration for t in self._tours), dt.timedelta(0))
+        return sum_wait_dur
 
     def sum_service_duration(self):
-        regular = sum((t.sum_service_duration for t in self._tours), dt.timedelta(0))
-        return regular
+        sum_service_dur = sum(
+            (t.sum_service_duration for t in self._tours), dt.timedelta(0)
+        )
+        return sum_service_dur
 
     def sum_idle_duration(self):
-        regular = sum((t.sum_idle_duration for t in self._tours), dt.timedelta(0))
-        return regular
+        sum_idle_dur = sum((t.sum_idle_duration for t in self._tours), dt.timedelta(0))
+        return sum_idle_dur
 
     def utilization(self):
         """
@@ -306,9 +306,16 @@ class Carrier:
         assert (
             request in self.accepted_requests
         ), f"Request {request} is not accepted by carrier {self.id_}."
+
         new_tours = self._routing_solver.insert_request(
-            instance, self.tours, self.depot, request, self.max_num_tours
+            instance,
+            self.tours,
+            self.depot,
+            request,
+            self._objective_function,
+            self.max_num_tours,
         )
+
         assert new_tours != "infeasible", f"Inserting request {request} was infeasible."
         self._tours = new_tours
         self._unrouted_requests.remove(request)
@@ -358,19 +365,29 @@ class Carrier:
         RS = self._routing_solver
         try:
             if RS.check_bundle_insertion_feasibility(
-                instance, without_bundle, self.depot, bundle, self.max_num_tours
+                instance,
+                without_bundle,
+                self.depot,
+                bundle,
+                self._objective_function,
+                self.max_num_tours,
             ):
-                objective_without_bundle = self.objective
+                objective_without_bundle = self.objective_value
                 with_bundle = RS.insert_bundle(
-                    instance, without_bundle, self.depot, bundle, self.max_num_tours
+                    instance,
+                    without_bundle,
+                    self.depot,
+                    bundle,
+                    self._objective_function,
+                    self.max_num_tours,
                 )
-                self._tours = list(
-                    with_bundle
-                )  # temporarily set the tours with the bundle to evaluate their cost
-                objective_with_bundle = self.objective
+                # temporarily set the tours with the bundle to evaluate their cost
+                self._tours = list(with_bundle)
+                objective_with_bundle = self.objective_value
+                # reset
                 self._tours = list(without_bundle)
 
-                bid = (objective_with_bundle - objective_without_bundle).total_seconds()
+                bid = objective_with_bundle - objective_without_bundle
             else:
                 bid = "infeasible"
         except ValueError:
@@ -387,7 +404,11 @@ class Carrier:
         """
         self.clear_routes()
         new_tours = self._routing_solver.solve_vrp_statically(
-            instance, self.depot, self.accepted_requests, self.max_num_tours
+            instance,
+            self.depot,
+            self.accepted_requests,
+            self._objective_function,
+            self.max_num_tours,
         )
         self._tours = new_tours
         for tour in new_tours:
@@ -460,7 +481,12 @@ class Carrier:
                 request in self.accepted_requests
             ), f"Request {request} is not accepted by carrier {self.id_}."
         new_tours = self._routing_solver.insert_bundle(
-            instance, self.tours, self.depot, bundle, self.max_num_tours
+            instance,
+            self.tours,
+            self.depot,
+            bundle,
+            self._objective_function,
+            self.max_num_tours,
         )
         assert new_tours != "infeasible", f"Inserting bundle {bundle} was infeasible."
         self._tours = new_tours

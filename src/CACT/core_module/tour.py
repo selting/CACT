@@ -52,11 +52,11 @@ class Tour(ABC):
         # initialize depot-to-depot tour
         for _ in range(2):
             self._routing_sequence.insert(1, depot)
-            self._arrival_time_sequence.insert(1, ut.EXECUTION_START_TIME)
-            self._service_time_sequence.insert(1, ut.EXECUTION_START_TIME)
+            self._arrival_time_sequence.insert(1, depot.tw_open)
+            self._service_time_sequence.insert(1, depot.tw_open)
             self._service_duration_sequence.insert(1, dt.timedelta(0))
             self._wait_duration_sequence.insert(1, dt.timedelta(0))
-            self._max_shift_sequence.insert(1, ut.END_TIME - ut.EXECUTION_START_TIME)
+            self._max_shift_sequence.insert(1, depot.tw_close - depot.tw_open)
 
     def __str__(self):
         return (
@@ -166,7 +166,7 @@ class Tour(ABC):
     @property
     def sum_idle_duration(self):
         """assumes that vehicles leave the depot immediately! Therefore, there is no idle time at the start depot"""
-        idle = ut.END_TIME - (
+        idle = self.routing_sequence[0].tw_close - (
             self.service_time_sequence[-1] + self.service_duration_sequence[-1]
         )
         return idle
@@ -175,9 +175,12 @@ class Tour(ABC):
     def utilization(self):
         # utilization = (self.sum_travel_duration + self.sum_service_duration) / (
         #         self.sum_travel_duration + self.sum_service_duration + self.sum_wait_duration)
+        planning_horizon_duration = (
+            self.routing_sequence[-1].tw_close - self.routing_sequence[0].tw_open
+        )
         utilization = (
             self.sum_travel_duration + self.sum_service_duration
-        ) / ut.EXECUTION_TIME_HORIZON.duration
+        ) / planning_horizon_duration
         return utilization
 
     def as_dict(self):
@@ -367,9 +370,9 @@ class Tour(ABC):
         """
 
         assert 0 < insertion_index < len(self)
-        assert 0 <= request.uid < instance.num_carriers + instance.num_requests * 2, (
-            f"Vertex {request.uid} is out of bounds"
-        )
+        assert (
+            0 <= request.uid < instance.num_carriers + instance.num_requests * 2
+        ), f"Vertex {request.uid} is out of bounds"
 
         # ===== [1] INSERT =====
         self._requests.add(request)

@@ -4,8 +4,8 @@ from auction_module.bundle_generation.bundle_based.bundle import Bundle
 from core_module.depot import Depot
 from core_module.instance import CAHDInstance
 from core_module.tour import Tour
+from routing_module.objective_function import ObjectiveFunction
 from utility_module.parameterized_class import ParameterizedClass
-from .insertion_criterion import InsertionCriterion
 from .static_routing import StaticSequentialCheapestInsertion, StaticPyVrp
 
 
@@ -17,6 +17,7 @@ class BundleInsertion(ParameterizedClass):
         tours: list[Tour],
         depot: Depot,
         bundle: Bundle,
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         pass
@@ -27,20 +28,16 @@ class BundleInsertion(ParameterizedClass):
 
 class StaticSequentialCheapestInsertionBundleInsertion(BundleInsertion):
     """
-    Re-routes from scratch by assembling all requests (those that are already routed and the bundle requests) and
+    Re-routes from scratch by assembling all requests (those that are already routed AND the bundle requests) and
     then calling the sequential cheapest insertion static routing solver (inserts one request at a time, in order of
-    the sequence_key
+    the sequence_key)
     """
 
     def __init__(
         self,
         sequence_key: callable,
-        insertion_criterion: InsertionCriterion,
     ):
-        self._static_routing = StaticSequentialCheapestInsertion(
-            sequence_key, insertion_criterion
-        )
-        self._params = {"insertion_criterion": insertion_criterion}
+        self._static_routing = StaticSequentialCheapestInsertion( sequence_key)
 
     def __call__(
         self,
@@ -48,23 +45,24 @@ class StaticSequentialCheapestInsertionBundleInsertion(BundleInsertion):
         tours: list[Tour],
         depot: Depot,
         bundle: Bundle,
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
         all_requests = []
         for tour in tours:
             all_requests.extend(tour.requests)
         all_requests.extend(bundle.requests)
-        new_tours = self._static_routing(instance, depot, all_requests, max_num_tours)
+        new_tours = self._static_routing(instance, depot, all_requests, objective, max_num_tours)
         return new_tours
 
 
-class CheapestCheapestInsertionBundleInsertion(BundleInsertion):
-    """
-    Inserts requests one by one, through repeatedly finding the best combination of request, tour and insertion position
+# class CheapestCheapestInsertionBundleInsertion(BundleInsertion):
+#     """
+#     Inserts requests one by one, through repeatedly finding the best combination of request, tour and insertion position
 
-    """
+#     """
 
-    pass
+#     pass
 
 
 class PyVrpBundleInsertion(BundleInsertion):
@@ -82,8 +80,10 @@ class PyVrpBundleInsertion(BundleInsertion):
         tours: list[Tour],
         depot: Depot,
         bundle: Bundle,
+        objective:ObjectiveFunction,
         max_num_tours: int,
     ) -> list[Tour]:
+        raise NotImplementedError("PyVRP not yet adapted to the new Objective class")
         all_requests = []
         for tour in tours:
             all_requests += list(tour.requests)

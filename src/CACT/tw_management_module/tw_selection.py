@@ -2,9 +2,9 @@ import abc
 import logging
 import random
 
+from core_module.instance import CAHDInstance
 from core_module.request import Request
 from tw_management_module.time_window import TimeWindow
-from utility_module.utils import EXECUTION_START_TIME, END_TIME, EXECUTION_TIME_HORIZON
 
 logger = logging.getLogger(__name__)
 
@@ -14,35 +14,48 @@ class TWSelectionBehavior(abc.ABC):
         pass
 
     def __repr__(self):
-        return f'{self.__class__.__name__}'
+        return f"{self.__class__.__name__}"
 
     # NOTE maybe in the future, i have to store also time window preferences / tw selection behavior in the instance
-    def execute(self, tw_offer_set: list[TimeWindow], request: Request):
+    def execute(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ):
         # may return False if no TW fits the preference
         if tw_offer_set:
-            return self.select_tw(tw_offer_set, request)
+            return self.select_tw(instance, tw_offer_set, request)
         # if the tw_offer_set is empty
         else:
             return False
 
     @abc.abstractmethod
-    def select_tw(self, tw_offer_set: list[TimeWindow], request: Request) -> TimeWindow:
+    def select_tw(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ) -> TimeWindow:
         pass
 
 
 class NoTW(TWSelectionBehavior):
-    def execute(self, tw_offer_set: list[TimeWindow], request: Request):
-        assert tw_offer_set == [EXECUTION_TIME_HORIZON]
-        return EXECUTION_TIME_HORIZON
+    def execute(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ):
+        inst_time_horizon = TimeWindow(
+            instance.execution_time_start, instance.execution_time_end
+        )
+        assert tw_offer_set == inst_time_horizon
+        return inst_time_horizon
 
-    def select_tw(self, tw_offer_set: list[TimeWindow], request: Request) -> TimeWindow:
+    def select_tw(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ) -> TimeWindow:
         pass
 
 
 class UniformPreference(TWSelectionBehavior):
-    """Will randomly select a TW """
+    """Will randomly select a TW"""
 
-    def select_tw(self, tw_offer_set: list[TimeWindow], request: Request) -> TimeWindow:
+    def select_tw(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ) -> TimeWindow:
         return random.choice(tw_offer_set)
 
 
@@ -54,18 +67,27 @@ class UnequalPreference(TWSelectionBehavior):
     Late time windows exhibit a much higher popularity and are requested by 90% of the customers.
     """
 
-    def select_tw(self, tw_offer_set: list[TimeWindow], request: Request) -> TimeWindow:
+    def select_tw(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ) -> TimeWindow:
         # preference can either be for early (10%) or late (90%) time windows
         pref = random.random()
 
+        planning_horizon_midpoint = (
+            instance.execution_time_start
+            + (instance.execution_time_end - instance.execution_time_start) / 2
+        )
+
         # early preference
         if pref <= 0.1:
-            attractive_tws = [tw for tw in tw_offer_set if
-                              tw.open <= EXECUTION_START_TIME + (END_TIME - EXECUTION_START_TIME) / 2]
+            attractive_tws = [
+                tw for tw in tw_offer_set if tw.open <= planning_horizon_midpoint
+            ]
         # late preference
         else:
-            attractive_tws = [tw for tw in tw_offer_set if
-                              tw.close >= EXECUTION_START_TIME + (END_TIME - EXECUTION_START_TIME) / 2]
+            attractive_tws = [
+                tw for tw in tw_offer_set if tw.close >= planning_horizon_midpoint
+            ]
         if attractive_tws:
             return random.choice(attractive_tws)
         else:
@@ -75,15 +97,20 @@ class UnequalPreference(TWSelectionBehavior):
 class EarlyPreference(TWSelectionBehavior):
     """Will always select the earliest TW available based on the time window opening"""
 
-    def select_tw(self, tw_offer_set: list[TimeWindow], request: Request) -> TimeWindow:
+    def select_tw(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ) -> TimeWindow:
         return min(tw_offer_set, key=lambda tw: tw.open)
 
 
 class LatePreference(TWSelectionBehavior):
     """Will always select the latest TW available based on the time window closing"""
 
-    def select_tw(self, tw_offer_set: list[TimeWindow], request: Request) -> TimeWindow:
+    def select_tw(
+        self, instance: CAHDInstance, tw_offer_set: list[TimeWindow], request: Request
+    ) -> TimeWindow:
         return max(tw_offer_set, key=lambda tw: tw.close)
+
 
 # class PreferEarlyAndLate(TWSelectionBehavior):
 #     def select_tw(self, tw_offer_set):

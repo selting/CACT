@@ -12,16 +12,17 @@ from tqdm import trange
 from core_module.depot import Depot
 from core_module.request import Request
 from tw_management_module.time_window import TimeWindow
+from utility_module.datetime_handling import datetime_range
 
 Coordinates = namedtuple("Coordinates", ["x", "y"])
 
-ACCEPTANCE_START_TIME: dt.datetime = dt.datetime.min
+# ACCEPTANCE_START_TIME: dt.datetime = dt.datetime.min
 
-EXECUTION_START_TIME: dt.datetime = ACCEPTANCE_START_TIME + dt.timedelta(
-    days=1, hours=10
-)
-END_TIME: dt.datetime = EXECUTION_START_TIME + dt.timedelta(hours=8)
-EXECUTION_TIME_HORIZON = TimeWindow(EXECUTION_START_TIME, END_TIME)
+# EXECUTION_START_TIME: dt.datetime = ACCEPTANCE_START_TIME + dt.timedelta(
+#     days=1, hours=10
+# )
+# END_TIME: dt.datetime = EXECUTION_START_TIME + dt.timedelta(hours=8)
+# EXECUTION_TIME_HORIZON = TimeWindow(EXECUTION_START_TIME, END_TIME)
 
 # alpha 100%
 univie_colors_100 = [
@@ -176,49 +177,6 @@ def n_points_on_a_circle(n: int, radius, origin_x=0, origin_y=0):
     return points
 
 
-def datetime_range(
-    start: dt.datetime,
-    stop: dt.datetime,
-    step: dt.timedelta = None,
-    num: int = None,
-    startpoint=True,
-    endpoint=True,
-):
-    """
-    returns a generator of equally-spaced datetime objects. Exactly one of step or num must be supplied.
-    """
-
-    assert None in (step, num), f"only one of step or num must be given"
-    if step is not None:
-        assert step.total_seconds() > 0, f"Step shouldn't be 0"
-    if num is not None:
-        assert num > 0, f"Num shouldn't be 0"
-
-    delta = stop - start
-
-    if num:
-        if endpoint and startpoint:
-            div = num - 1
-        elif endpoint or startpoint:
-            div = num
-        else:
-            div = num + 1
-        step = delta / div
-    else:
-        num = delta // step
-        if endpoint and startpoint:
-            num += 1
-        elif endpoint or startpoint:
-            pass
-        else:
-            num -= 1
-
-    if not startpoint:
-        start += step
-
-    return (start + (x * step) for x in range(num))
-
-
 def natural_sort_key(s, _nsre=re.compile("([0-9]+)")):
     return [
         int(text) if text.isdigit() else text.lower() for text in _nsre.split(str(s))
@@ -252,16 +210,16 @@ def validate_solution(instance, solution):
         len(solution.carriers), desc=f"Solution validation", disable=True
     ):
         carrier = solution.carriers[carrier_id]
-        assert len(carrier.unrouted_requests) == 0, (
-            f"Carrier {carrier} has unrouted requests: {carrier.unrouted_requests}"
-        )
+        assert (
+            len(carrier.unrouted_requests) == 0
+        ), f"Carrier {carrier} has unrouted requests: {carrier.unrouted_requests}"
         for tour in carrier.tours:
-            assert tour.routing_sequence[0] == carrier.depot, (
-                f"the start of tour {tour} from carrier {carrier} is not a depot"
-            )
-            assert tour.routing_sequence[-1] == carrier.depot, (
-                f"the end of tour {tour} from carrier {carrier} is not a depot"
-            )
+            assert (
+                tour.routing_sequence[0] == carrier.depot
+            ), f"the start of tour {tour} from carrier {carrier} is not a depot"
+            assert (
+                tour.routing_sequence[-1] == carrier.depot
+            ), f"the end of tour {tour} from carrier {carrier} is not a depot"
 
             validate_tour(instance, tour)
 
@@ -344,13 +302,20 @@ def debugger_is_active() -> bool:
 
 def generate_time_windows(
     tw_length: dt.timedelta,
-    start: dt.datetime = EXECUTION_START_TIME,
-    end: dt.datetime = END_TIME,
+    start: dt.datetime,
+    end: dt.datetime,
 ):
-    return [
-        TimeWindow(e, min(e + tw_length, end))
-        for e in datetime_range(start, end, step=tw_length, endpoint=False)
-    ]
+    out = []
+    for tw_start in datetime_range(start, end, step=tw_length, endpoint=False):
+        try:
+            end_a = tw_start + tw_length
+        except OverflowError:
+            end_a = dt.datetime.max
+
+        tw_end = min(end_a, end)
+        tw = TimeWindow(tw_start, tw_end)
+        out.append(tw)
+    return out
 
 
 #

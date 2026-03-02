@@ -49,10 +49,11 @@ class Request(Vertex):
         self.tw_close: dt.datetime = tw_close
 
     def __repr__(self):
-        return (f"Request(uid={self.uid}, index={self.index}, label={self.label}, x={self.x}, y={self.y}, "
-                f"initial_carrier_assignment={self.initial_carrier_assignment}, disclosure_time={self.disclosure_time}, "
-                f"revenue={self.revenue}, load={self.load}, service_duration={self.service_duration}, "
-                f"tw_open={self.tw_open}, tw_close={self.tw_close})")
+        return f"Request {self.index} [{self.uid}]"
+        # return (f"Request(uid={self.uid}, index={self.index}, label={self.label}, x={self.x}, y={self.y}, "
+        #         f"initial_carrier_assignment={self.initial_carrier_assignment}, disclosure_time={self.disclosure_time}, "
+        #         f"revenue={self.revenue}, load={self.load}, service_duration={self.service_duration}, "
+        #         f"tw_open={self.tw_open}, tw_close={self.tw_close})")
 
     def __hash__(self):
         return hash((self.index, self.uid, self.x, self.y, self.initial_carrier_assignment))

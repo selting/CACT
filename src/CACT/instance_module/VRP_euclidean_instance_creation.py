@@ -4,13 +4,14 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
+
 from core_module import instance as it
 from core_module.depot import Depot
 from core_module.request import Request
 from scipy.spatial.distance import pdist, squareform
 from sklearn.datasets import make_blobs
 from tqdm import trange
-from utility_module import utils as ut
+from utility_module.datetime_handling import datetime_range
 
 
 def generate_euclidean_cr_ahd_instance(
@@ -28,7 +29,11 @@ def generate_euclidean_cr_ahd_instance(
     run: int,
     max_vehicle_load: int,
     max_tour_length: int,
-    max_tour_duration,
+    acceptance_start_time: Union[float, dt.datetime],
+    acceptance_stop_time: Union[float, dt.datetime],
+    depot_open_time: Union[float, dt.datetime],
+    depot_close_time: Union[float, dt.datetime],
+    max_tour_duration: Union[int, dt.timedelta],
     requests_revenue: Union[float, int, list[float], list[int]],
     requests_service_duration: Union[dt.timedelta, list[dt.timedelta]],
     requests_load: Union[float, int, list[float], list[int]],
@@ -64,6 +69,16 @@ def generate_euclidean_cr_ahd_instance(
             num_carriers * num_requests_per_carrier
         )
 
+    if isinstance(acceptance_start_time, float):
+        acceptance_start_time = dt.date.fromtimestamp(acceptance_start_time)
+    if isinstance(acceptance_stop_time, float):
+        acceptance_stop_time = dt.date.fromtimestamp(acceptance_stop_time)
+    if isinstance(depot_open_time, float):
+        depot_open_time = dt.date.fromtimestamp(depot_open_time)
+    if isinstance(depot_close_time, float):
+        depot_close_time = dt.date.fromtimestamp(depot_close_time)
+
+
     center_x, center_y = (x_min + x_max) / 2, (y_min + y_max) / 2
 
     # generate evenly positioned depots around the city center
@@ -76,8 +91,8 @@ def generate_euclidean_cr_ahd_instance(
             vertex=i,
             x=center_x + dist_center_to_carrier * math.cos(i * degree_radians),
             y=center_y + dist_center_to_carrier * math.sin(i * degree_radians),
-            tw_open=ut.EXECUTION_START_TIME,
-            tw_close=ut.END_TIME,
+            tw_open=depot_open_time,
+            tw_close=depot_close_time
         )
         depots.append(d)
 
@@ -85,9 +100,9 @@ def generate_euclidean_cr_ahd_instance(
     requests = []
     for carrier_idx in range(num_carriers):
         disclosure_times = list(
-            ut.datetime_range(
-                start=ut.ACCEPTANCE_START_TIME,
-                stop=ut.EXECUTION_START_TIME,
+            datetime_range(
+                start=acceptance_start_time,
+                stop=acceptance_stop_time,
                 num=num_requests_per_carrier,
                 endpoint=False,
             )
@@ -119,8 +134,8 @@ def generate_euclidean_cr_ahd_instance(
                 revenue=requests_revenue[request_idx],
                 load=requests_load[request_idx],
                 service_duration=requests_service_duration[request_idx],
-                tw_open=ut.EXECUTION_START_TIME,
-                tw_close=ut.END_TIME,
+                tw_open=depot_open_time,
+                tw_close=depot_close_time,
             )
             carrier_requests.append(request)
         requests.extend(carrier_requests)
@@ -180,7 +195,7 @@ def generate_euclidean_cr_ahd_instance(
 
 
 if __name__ == "__main__":
-    for num_requests_per_carrier in [8, 16, 32, 64, 128]:
+    for num_requests_per_carrier in [8, 16,]:
         for num_clusters_per_carrier, cluster_std in [(None, None), (3, 3)]:
             for run in trange(
                 200,
@@ -202,7 +217,11 @@ if __name__ == "__main__":
                     run=run,
                     max_vehicle_load=999999999,
                     max_tour_length=999999999,
-                    max_tour_duration=999999999,
+                    acceptance_start_time=dt.datetime(1, 1, 1),
+                    acceptance_stop_time=dt.datetime(1, 1, 2),  # 24 hours acceptance
+                    depot_open_time=dt.datetime(1, 1, 2, 8),  # 8am vehicle dispatch
+                    depot_close_time=dt.datetime.max,  # "infinite" time horizon
+                    max_tour_duration=dt.timedelta.max,
                     requests_revenue=1,
                     requests_service_duration=dt.timedelta(minutes=4),
                     requests_load=1,

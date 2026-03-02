@@ -142,7 +142,7 @@ class Auction(ParameterizedClass):
     def run_auction(self, instance: it.CAHDInstance, solution: slt.CAHDSolution):
         # SETUP
         pre_auction_solution = deepcopy(solution)
-        # logger.debug(f'running auction {self.__class__.__name__}')
+        pre_auction_objective_value = deepcopy(solution.objective_value)
         self.log_params()
 
         # REQUEST SELECTION
@@ -155,10 +155,12 @@ class Auction(ParameterizedClass):
 
         # WINNER DETERMINATION
         try:
-            wdp = WdpGurobi(queries, responses, sense='min')  # minimize the sum of realized routing costs
+            sense = 'max' if solution._objective_function.higher_is_better else 'min'
+            wdp = WdpGurobi(queries, responses, sense=sense)  # solve the WDP using Gurobi
         except GurobiError as e:
+            # fallback to CBC solver
             warnings.warn(f'WDP: Gurobi error: {e}, resorting to pyomo with CBC solver')
-            wdp = WdpPyomo(queries, responses, sense='min', solver_name='cbc')
+            wdp = WdpPyomo(queries, responses, sense=sense, solver_name='cbc')
 
         item_allocation = wdp.item_allocation
         mlflow.log_metric('runtime_wdp', wdp.runtime)
@@ -181,13 +183,10 @@ class Auction(ParameterizedClass):
             carrier.route_new_bundle(instance, bundle)
 
         # CATCH ERRORS
-        if solution.objective > pre_auction_solution.objective:
+        if solution._objective_function.is_better(pre_auction_objective_value, solution.objective_value):
             raise ValueError(f'{instance.id_},:\n'
-                             f' Post={solution.objective}; Pre={pre_auction_solution.objective}\n'
-                             f' Post-auction objective is worse than pre-auction objective!\n'
-                             f' Recovering the pre-auction solution.')
-            solution = pre_auction_solution
-            assert pre_auction_solution.objective == solution.objective
+                             f' Post={solution.objective_value}; Pre={pre_auction_objective_value}\n'
+                             f' Post-auction objective is worse than pre-auction objective!\n')
 
         auction_metrics = self.compute_auction_metrics(responses, pre_auction_solution, solution)
         mlflow.log_metrics({k: my_value_parser(v, True) for k, v in auction_metrics.items()})

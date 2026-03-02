@@ -3,6 +3,7 @@ from core_module.depot import Depot
 from core_module.instance import CAHDInstance
 from core_module.request import Request
 from core_module.tour import Tour
+from routing_module.objective_function import ObjectiveFunction
 from utility_module.parameterized_class import ParameterizedClass
 from .bundle_insertion import BundleInsertion
 from .bundle_insertion_feasibility_check import BundleInsertionFeasibilityCheck
@@ -64,9 +65,10 @@ class RoutingSolver(ParameterizedClass):
         tours: list[Tour],
         depot: Depot,
         request: Request,
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ):
-        return self._request_insertion(instance, tours, depot, request, max_num_tours)
+        return self._request_insertion(instance, tours, depot, request, objective, max_num_tours)
 
     def check_bundle_insertion_feasibility(
         self,
@@ -74,10 +76,11 @@ class RoutingSolver(ParameterizedClass):
         tours: list[Tour],
         depot: Depot,
         bundle: Bundle,
+        objective:ObjectiveFunction,
         max_num_tours,
     ) -> bool:
         return self._bundle_insertion_feasibility_check(
-            instance, tours, depot, bundle, max_num_tours
+            instance, tours, depot, bundle, objective, max_num_tours
         )
 
     def insert_bundle(
@@ -86,15 +89,17 @@ class RoutingSolver(ParameterizedClass):
         tours: list[Tour],
         depot: Depot,
         bundle: Bundle,
+        objective:ObjectiveFunction,
         max_num_tours: int,
     ):
-        return self._bundle_insertion(instance, tours, depot, bundle, max_num_tours)
+        return self._bundle_insertion(instance, tours, depot, bundle, objective, max_num_tours)
 
     def solve_vrp_statically(
         self,
         instance: CAHDInstance,
         depot: Depot,
         requests: list[Request],
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ):
-        return self._static_routing(instance, depot, requests, max_num_tours)
+        return self._static_routing(instance, depot, requests, objective, max_num_tours)

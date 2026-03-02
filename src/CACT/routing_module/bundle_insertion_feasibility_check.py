@@ -7,9 +7,9 @@ from auction_module.bundle_generation.bundle_based.bundle import Bundle
 from core_module.depot import Depot
 from core_module.instance import CAHDInstance
 from core_module.tour import Tour
+from routing_module.objective_function import ObjectiveFunction
 from utility_module.parameterized_class import ParameterizedClass
 from .dynamic_routing import DynamicCheapestInsertion
-from .insertion_criterion import MinDuration
 from .pyvrp_stopping_criterion import FirstFeasible
 from .request_insertion_feasibility_check import SimpleInsertionRIFC
 from .static_routing import StaticPyVrp
@@ -27,6 +27,7 @@ class BundleInsertionFeasibilityCheck(ParameterizedClass):
         tours: list[Tour],
         depot: Depot,
         bundle: Bundle,
+        objective:ObjectiveFunction,
         max_num_tours: int,
     ) -> bool:
         pass
@@ -40,7 +41,7 @@ class StaticSequentialCheapestInsertionBIFC(BundleInsertionFeasibilityCheck):
         self,
         sequence_key: callable,
         request_insertion_feasibility_check=SimpleInsertionRIFC(),
-        request_insertion=DynamicCheapestInsertion(MinDuration()),
+        request_insertion=DynamicCheapestInsertion(),
     ):
         self.sequence_key = sequence_key
         self.request_insertion_feasibility_check = request_insertion_feasibility_check
@@ -57,6 +58,7 @@ class StaticSequentialCheapestInsertionBIFC(BundleInsertionFeasibilityCheck):
         tours: list[Tour],
         depot: Depot,
         bundle: Bundle,
+        objective: ObjectiveFunction,
         max_num_tours: int,
     ) -> bool:
         all_requests = []
@@ -70,7 +72,7 @@ class StaticSequentialCheapestInsertionBIFC(BundleInsertionFeasibilityCheck):
                 instance, new_tours, depot, request, max_num_tours
             ):
                 new_tours = self.request_insertion(
-                    instance, new_tours, depot, request, max_num_tours
+                    instance, new_tours, depot, request, objective, max_num_tours
                 )
             else:
                 return False
