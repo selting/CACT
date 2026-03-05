@@ -74,6 +74,8 @@ key_mapping = LabelDict({
     'data__r': 'data__r',
     'data__t': 'data__t',
     'data__v': 'data__v',
+    "data__num_clusters_per_carrier": "# clusters",
+    "data__cluster_std": "Cluster std",
 
     'solver__name': 'solver',
     'solver__routing_solver__bundle_insertion__insertion_criterion__name': 'solver__routing_solver__bundle_insertion__insertion_criterion__name',
