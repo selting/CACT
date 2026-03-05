@@ -83,7 +83,8 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
     s_num_submitted_requests: Sequence[Union[int, float]] = [
         # 0.1,
         # 0.2,
-        0.4
+        # 0.4
+        0.5
     ]
 
     s_request_selection: Sequence[rs.RequestSelectionStrategy] = [
@@ -120,7 +121,7 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
                     higher_is_better=False,
                     optimization_policy=optimization_policy,
                     error_function=error_function,
-                    num_unknown_orders=6,  # TODO make this variable?
+                    num_unknown_orders=4,  # TODO make this variable?
                     num_vehicles=1,  # TODO make this variable?
                     routing_solver=RoutingSolver(
                         request_insertion_feasibility_check=SimpleInsertionRIFC(),
@@ -152,7 +153,7 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
         for optimization_policy in [
             opt_policy(max_num_function_evaluations, **hyperparams)
             for opt_policy, hyperparams in [
-                # (TrulyRandomSearch, {}),
+                (TrulyRandomSearch, {}),
                 # (BayesianOptimizationPolicy, {}),
             ]
             + [
@@ -198,8 +199,8 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
                 ]
             ]
             for max_num_function_evaluations in [
-                # 256,
-                8,
+                256,
+                # 8
             ]
         ]
         for error_function in [
@@ -211,9 +212,9 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
             # r2_score,
         ]
         for num_bidding_jobs in [
-            4
+            # 4
             # 16,
-            # 32,
+            32,
             # 64,
             # 128,
         ]

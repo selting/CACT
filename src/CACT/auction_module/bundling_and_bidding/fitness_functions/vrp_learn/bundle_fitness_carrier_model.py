@@ -136,7 +136,7 @@ class _CarrierModel:
             )
             constant_kmh = constant_kmh.mean()
             # FIXME the above way of re-constructing the speed fails because of the rounding that happens in CAHDInstance.__init__()
-            warnings.warn("CarrierModel uses hard-coded speed to reconstruct duration matrix") 
+            # warnings.warn("CarrierModel uses hard-coded speed to reconstruct duration matrix") 
             constant_kmh = 50 
             extended_duration_matrix = extended_distance_matrix / constant_kmh
             extended_duration_matrix = np.vectorize(lambda x: timedelta(hours=x))(

@@ -10,14 +10,14 @@ if __name__ == "__main__":
     # setting args in code
     if True:
         args = {
-            "type": "euclidean",
-            "distance": 7,
-            "num_carriers": 3,
-            "num_requests": [10],
-            "carrier_max_num_tours": [1],
-            "service_area_overlap": [1.0],
-            "run": range(1),
-            "threads": 1,
+            # "type": "euclidean",
+            # "distance": 7,
+            # "num_carriers": 3,
+            # "num_requests": [10],
+            # "carrier_max_num_tours": [1],
+            # "service_area_overlap": [1.0],
+            # "run": range(10),
+            "threads": 6,
             "fail_on_error": 1,
             "tag": "local_dev_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         }
@@ -26,16 +26,6 @@ if __name__ == "__main__":
         args = parser.parse_args().__dict__
 
     start = datetime.now()
-
-    # paths = io.instance_file_selector(
-    #     type_=args["type"],
-    #     distance=args["distance"],
-    #     num_carriers=args["num_carriers"],
-    #     num_requests=args["num_requests"],
-    #     carrier_max_num_tours=args["carrier_max_num_tours"],
-    #     service_area_overlap=args["service_area_overlap"],
-    #     run=args["run"],
-    # )
 
     paths = io.instance_file_selector_2(
         Path("src/CACT/data/instances/euclidean_instances_rev1"),
@@ -46,7 +36,7 @@ if __name__ == "__main__":
             num_requests_per_carrier=[8],
             carriers_max_num_tours=[1],
             carrier_competition=[1],
-            run=range(3),
+            run=range(20),
             num_clusters_per_carrier=[None, 3],
             cluster_std=[None, 3],
         ),
