@@ -10,9 +10,10 @@ if __name__ == "__main__":
     print("START main.py")
     # read command line arguments
     args = parser.parse_args().__dict__
-
+    
     start = datetime.now()
 
+    # TODO include these instance selection parameters into the argument parser
     paths = io.instance_file_selector_2(
         Path("src/CACT/data/instances/euclidean_instances_rev1"),
         dict(
