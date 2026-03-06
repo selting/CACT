@@ -8,22 +8,8 @@ from utility_module.argparse_utils import parser
 
 if __name__ == "__main__":
     print("START main.py")
-    # read command line arguments if provided
-    if len(sys.argv) > 1:
-        args = parser.parse_args().__dict__
-    else:
-        args = {
-            # "type": "euclidean",
-            # "distance": 7,
-            # "num_carriers": 3,
-            # "num_requests": [10],
-            # "carrier_max_num_tours": [1],
-            # "service_area_overlap": [1.0],
-            # "run": range(10),
-            "threads": 6,
-            "fail_on_error": 1,
-            "tag": "local_dev_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
-        }
+    # read command line arguments
+    args = parser.parse_args().__dict__
 
     start = datetime.now()
 
