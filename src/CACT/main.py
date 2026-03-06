@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import sys
 
 from solver_module import workflow, config
 from utility_module import io
@@ -7,8 +8,10 @@ from utility_module.argparse_utils import parser
 
 if __name__ == "__main__":
     print("START main.py")
-    # setting args in code
-    if True:
+    # read command line arguments if provided
+    if len(sys.argv) > 1:
+        args = parser.parse_args().__dict__
+    else:
         args = {
             # "type": "euclidean",
             # "distance": 7,
@@ -21,9 +24,6 @@ if __name__ == "__main__":
             "fail_on_error": 1,
             "tag": "local_dev_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         }
-    # else read from terminal parameters
-    else:
-        args = parser.parse_args().__dict__
 
     start = datetime.now()
 
