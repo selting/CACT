@@ -127,17 +127,19 @@ class _CarrierModel:
             )
             # generate the duration matrix in datetime.timedelta format
             distance = original_instance._travel_distance_matrix
-            duration = np.vectorize(lambda x: x.total_seconds()/60**2)(original_instance._travel_duration_matrix)
+            duration = np.vectorize(lambda x: x.total_seconds() / 60**2)(
+                original_instance._travel_duration_matrix
+            )
             constant_kmh = np.divide(
-                distance, 
+                distance,
                 duration,
                 out=np.zeros_like(distance, dtype=np.float64),
-                where=duration != 0
+                where=duration != 0,
             )
             constant_kmh = constant_kmh.mean()
             # FIXME the above way of re-constructing the speed fails because of the rounding that happens in CAHDInstance.__init__()
-            # warnings.warn("CarrierModel uses hard-coded speed to reconstruct duration matrix") 
-            constant_kmh = 50 
+            # warnings.warn("CarrierModel uses hard-coded speed to reconstruct duration matrix")
+            constant_kmh = 50
             extended_duration_matrix = extended_distance_matrix / constant_kmh
             extended_duration_matrix = np.vectorize(lambda x: timedelta(hours=x))(
                 extended_duration_matrix
@@ -339,6 +341,19 @@ class BundleFitnessCarrierModel(BundleFitnessFunction):
 
         for carrier_idx in range(len(self._models)):
             carrier_model = self._models[carrier_idx]
+            pbounds = {
+                f"x{i}": (
+                    instance.meta["bounding_box_x_min"],
+                    instance.meta["bounding_box_x_max"],
+                )
+                for i in range(len(carrier_model.params_names) // 2)
+            } | {
+                f"y{i}": (
+                    instance.meta["bounding_box_y_min"],
+                    instance.meta["bounding_box_y_max"],
+                )
+                for i in range(len(carrier_model.params_names) // 2)
+            }
             target_func = TargetFunction(
                 error_func=self._error_function,
                 carrier_model=carrier_model,
@@ -346,7 +361,8 @@ class BundleFitnessCarrierModel(BundleFitnessFunction):
                 y_true=responses[carrier_idx],
                 direction="min",
                 target_func_pnames=carrier_model.params_names,
-                target_func_pbounds=instance.meta["type"],
+                # target_func_pbounds=instance.meta["type"],
+                target_func_pbounds=pbounds,
             )
             target_opt, target_opt_params = self._optimization_policy.optimize(
                 instance, auction_request_pool, target_func

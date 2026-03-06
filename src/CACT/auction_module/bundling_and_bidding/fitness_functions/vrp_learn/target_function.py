@@ -59,14 +59,16 @@ class TargetFunction(ParameterizedClass):
         self._num_samples = len(X)
         self.direction = direction
         self.pnames = target_func_pnames
-        if 'vienna' in target_func_pbounds:
-            self.pbounds = {f'x{i}': (48.116600, 48.323843) for i in range(len(target_func_pnames) // 2)} | \
-                           {f'y{i}': (16.174965, 16.579399) for i in range(len(target_func_pnames) // 2)}
-        elif target_func_pbounds == 'euclidean':
-            self.pbounds = {f'x{i}': (0, 25) for i in range(len(target_func_pnames) // 2)} | \
-                           {f'y{i}': (0, 25) for i in range(len(target_func_pnames) // 2)}
-        else:
-            self.pbounds = target_func_pbounds
+        # if 'vienna' in target_func_pbounds:
+        #     self.pbounds = {f'x{i}': (48.116600, 48.323843) for i in range(len(target_func_pnames) // 2)} | \
+        #                    {f'y{i}': (16.174965, 16.579399) for i in range(len(target_func_pnames) // 2)}
+        # elif target_func_pbounds == 'euclidean':
+        #     self.pbounds = {f'x{i}': (0, 25) for i in range(len(target_func_pnames) // 2)} | \
+        #                    {f'y{i}': (0, 25) for i in range(len(target_func_pnames) // 2)}
+        # if isinstance
+        # else:
+            # self.pbounds = target_func_pbounds
+        self.pbounds = target_func_pbounds
 
         self._params = {
             'error_func': str(self.error_func),
