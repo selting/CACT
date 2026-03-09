@@ -1,6 +1,4 @@
-from datetime import datetime
 from pathlib import Path
-import sys
 
 from solver_module import workflow, config
 from utility_module import io
@@ -11,8 +9,6 @@ if __name__ == "__main__":
     # read command line arguments
     args = parser.parse_args().__dict__
     
-    start = datetime.now()
-
     # TODO include these instance selection parameters into the argument parser
     paths = io.instance_file_selector_2(
         Path("src/CACT/data/instances/euclidean_instances_rev1"),
@@ -29,8 +25,7 @@ if __name__ == "__main__":
         ),
     )
 
-    # print(paths)
-    # exit(1)
+    # reading the configuration (HOW are the instances solved?)
     solvers = list(config.configs())
 
     # SOLVING
@@ -41,5 +36,3 @@ if __name__ == "__main__":
         fail_on_error=args["fail_on_error"],
         mlflow_group_id=args.get("tag"),
     )
-
-    end = datetime.now()

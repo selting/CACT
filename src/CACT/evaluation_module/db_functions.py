@@ -9,18 +9,18 @@ from key_mapping import key_mapping
 from value_mapping import value_mapping
 
 
-def get_db_connection():
+def get_db_connection(sqlite_path: str):
     # # Create an engine
     # engine = create_engine('sqlite:///../data/experiments/cact.db')
     # # Connect to the database using the engine
     # connection = engine.connect()
 
-    connection = sqlite3.connect('../data/experiments/cact.db')
+    connection = sqlite3.connect(sqlite_path)
     return connection
 
 
-def query_to_df(query):
-    conn = get_db_connection()
+def query_to_df(sqlite_path: str, query):
+    conn = get_db_connection(sqlite_path)
     try:
         df = pd.read_sql(query, conn)
     except Exception as e:
@@ -31,25 +31,25 @@ def query_to_df(query):
     return df
 
 
-def fetch_distinct_param_keys():
+def fetch_distinct_param_keys(sqlite_path: str,):
     query = "SELECT DISTINCT KEY FROM PARAMS"
-    df = query_to_df(query)
+    df = query_to_df(sqlite_path, query)
     return [""] + sorted(df['key'].tolist())
 
 
-def fetch_distinct_tag_keys():
+def fetch_distinct_tag_keys(sqlite_path):
     query = "SELECT DISTINCT KEY FROM TAGS"
-    tags_df = query_to_df(query)
+    tags_df = query_to_df(sqlite_path, query)
     return [""] + sorted(tags_df['key'].tolist())
 
 
-def fetch_distinct_metrics_keys():
+def fetch_distinct_metrics_keys(sqlite_path):
     query = "SELECT DISTINCT KEY FROM METRICS"
-    metrics_df = query_to_df(query)
+    metrics_df = query_to_df(sqlite_path, query)
     return [""] + sorted(metrics_df['key'].tolist())
 
 
-def fetch_distinct_param_values(mapped_key):
+def fetch_distinct_param_values(sqlite_path, mapped_key):
     if mapped_key == '':
         return []
     reverse_map = {v: k for k, v in key_mapping.items()}
@@ -59,13 +59,13 @@ def fetch_distinct_param_values(mapped_key):
         key = mapped_key
 
     query = f"SELECT DISTINCT VALUE FROM PARAMS WHERE KEY = '{key}'"
-    params_values_df = query_to_df(query)
+    params_values_df = query_to_df(sqlite_path, query)
     mapped_df = params_values_df.replace({'value': value_mapping}, inplace=False)  # TODO: is this required?!?!
 
     return [""] + sorted(mapped_df['value'].tolist())
 
 
-def fetch_distinct_tag_values(mapped_key):
+def fetch_distinct_tag_values(sqlite_path, mapped_key):
     if mapped_key == '':
         return []
     reverse_map = {v: k for k, v in key_mapping.items()}
@@ -75,13 +75,13 @@ def fetch_distinct_tag_values(mapped_key):
         key = mapped_key
 
     query = f"SELECT DISTINCT VALUE FROM TAGS WHERE KEY = '{key}'"
-    tags_values_df = query_to_df(query)
+    tags_values_df = query_to_df(sqlite_path, query)
     mapped_df = tags_values_df.replace({'value': value_mapping}, inplace=False)  # TODO: is this required?!?!
 
     return [""] + sorted(mapped_df['value'].tolist())
 
 
-def fetch_filtered_run_uuids(tag_filters, param_filters) -> list:
+def fetch_filtered_run_uuids(sqlite_path, tag_filters, param_filters) -> list:
     """
     Searches through the TAGS table to find the run_uuids that satisfy the given tag_filters.
     Then, given those run_uuids, searches through the PARAMS table to find the run_uuids that additionally
@@ -102,7 +102,7 @@ def fetch_filtered_run_uuids(tag_filters, param_filters) -> list:
                 tags_filter_query += " OR"
         tags_filter_query += f" GROUP BY run_uuid HAVING COUNT(DISTINCT(key)) = {len(tag_filters)};"
 
-    tag_run_uuids = query_to_df(tags_filter_query)['run_uuid'].tolist()
+    tag_run_uuids = query_to_df(sqlite_path, tags_filter_query)['run_uuid'].tolist()
     print(f'Extracted {len(tag_run_uuids)} run_uuids')
 
     # these are the child runs that should not be included:
@@ -110,7 +110,7 @@ def fetch_filtered_run_uuids(tag_filters, param_filters) -> list:
     SELECT DISTINCT(RUN_UUID) FROM TAGS
     WHERE key = 'mlflow.parentRunId';
     """
-    child_run_uuids = query_to_df(child_run_uuids_query)['run_uuid'].tolist()
+    child_run_uuids = query_to_df(sqlite_path, child_run_uuids_query)['run_uuid'].tolist()
     print(f'Extracted {len(child_run_uuids)} CHILD run_uuids')
     tag_run_uuids = [run_uuid for run_uuid in tag_run_uuids if run_uuid not in child_run_uuids]
     print(f'Extracted {len(tag_run_uuids)} PARENT run_uuids')
@@ -130,11 +130,11 @@ def fetch_filtered_run_uuids(tag_filters, param_filters) -> list:
             if idx < len(param_filters) - 1:
                 params_filter_query += " AND"
         params_filter_query += f" GROUP BY run_uuid HAVING COUNT(DISTINCT(key)) = {len(param_filters)};"
-    run_uuids = query_to_df(params_filter_query)['run_uuid'].tolist()
+    run_uuids = query_to_df(sqlite_path, params_filter_query)['run_uuid'].tolist()
     return run_uuids
 
 
-def fetch_runs(run_uuids: list):
+def fetch_runs(sqlite_path, run_uuids: list):
     """
     Function to fetch specific runs from the RUNS table, given their run_uuids.
     """
@@ -152,10 +152,10 @@ def fetch_runs(run_uuids: list):
     ORDER BY
         R.RUN_UUID
     """
-    return query_to_df(query)
+    return query_to_df(sqlite_path, query)
 
 
-def fetch_filtered_params(run_uuids: list):
+def fetch_filtered_params(sqlite_path, run_uuids: list):
     where_condition = ', '.join(map(lambda x: f'\'{x}\'', run_uuids))
 
     # join (in SQL) with the runs table to get the experiment_id, name, start_time, end_time, and status
@@ -175,7 +175,7 @@ def fetch_filtered_params(run_uuids: list):
         WHERE
             R.RUN_UUID IN ({where_condition})
         """
-    params_df = query_to_df(params_query)
+    params_df = query_to_df(sqlite_path,params_query)
     # FIXME: include the TAG! group_id is important to know which runs were executed together. treat tags as params
     # params_pivot = pd.pivot_table(params_df,
     #                               index=['experiment_name', 'run_uuid'],
@@ -185,7 +185,7 @@ def fetch_filtered_params(run_uuids: list):
     return params_df
 
 
-def fetch_runs_experiment_tags_params_metrics(run_uuids: list, num_rows):
+def fetch_runs_experiment_tags_params_metrics(sqlite_path,run_uuids: list, num_rows):
     """
     Returns all the information about the runs with the given run_uuids. This includes data from the
     RUNS, EXPERIMENTS, TAGS, PARAMS, and METRICS tables.
@@ -224,13 +224,13 @@ def fetch_runs_experiment_tags_params_metrics(run_uuids: list, num_rows):
 
     print(f'Querying the database for the combined information about {len(run_uuids)} runs ...')
     timer_start = time.time()
-    df = query_to_df(query)
+    df = query_to_df(sqlite_path,query)
     timer_end = time.time()
     print(f'Query took {timer_end - timer_start} seconds (df shape: {df.shape})')
     return df
 
 
-def fetch_filtered_tags(run_uuids: list):
+def fetch_filtered_tags(sqlite_path,un_uuids: list):
     where_condition = ', '.join(map(lambda x: f'\'{x}\'', run_uuids))
 
     # join (in SQL) with the runs table to get the experiment_id, name, start_time, end_time, and status
@@ -245,13 +245,14 @@ def fetch_filtered_tags(run_uuids: list):
         WHERE
             R.RUN_UUID IN ({where_condition})
         """
-    conn = get_db_connection()
-    tags_df = pd.read_sql(tags_query, conn)
-    conn.close()
+    # conn = get_db_connection()
+    # tags_df = pd.read_sql(tags_query, conn)
+    # conn.close()
+    tags_df=query_to_df(sqlite_path, tags_query)
     return tags_df
 
 
-def fetch_filtered_metrics(run_uuids: list):
+def fetch_filtered_metrics(sqlite_path, run_uuids: list):
     """
     Function to fetch filtered data from the database
     """
@@ -271,10 +272,10 @@ def fetch_filtered_metrics(run_uuids: list):
         R.RUN_UUID IN ({where_condition})
     """
 
-    conn = get_db_connection()
-    metrics_df = pd.read_sql(metrics_query, conn)
-    conn.close()
-
+    # conn = get_db_connection()
+    # metrics_df = pd.read_sql(metrics_query, conn)
+    # conn.close()
+    metrics_df = query_to_df(sqlite_path, metrics_query )
     # metrics_pivot = pd.pivot_table(metrics_df,
     #                                index=['experiment_name', 'run_uuid'],
     #                                columns=['metrics_key'],
@@ -283,9 +284,9 @@ def fetch_filtered_metrics(run_uuids: list):
     return metrics_df
 
 
-def fetch_params_and_metrics(run_uuids: list):
-    params = fetch_filtered_params(run_uuids)
-    metrics = fetch_filtered_metrics(run_uuids)
+def fetch_params_and_metrics(sqlite_path, run_uuids: list):
+    params = fetch_filtered_params(sqlite_path, run_uuids)
+    metrics = fetch_filtered_metrics(sqlite_path, run_uuids)
     # generate a multi-index on the columns to differentiate between params and metrics and then merge the two df
     # based on the experiment_name and run_uuid
     # params.columns = pd.MultiIndex.from_product([['params'], params.columns])
