@@ -19,7 +19,7 @@ if __name__ == "__main__":
             num_requests_per_carrier=[8],
             carriers_max_num_tours=[1],
             carrier_competition=[1],
-            run=range(20),
+            run=range(200),
             num_clusters_per_carrier=[None, 3],
             cluster_std=[None, 3],
         ),

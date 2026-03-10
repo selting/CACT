@@ -87,7 +87,6 @@ class IsolatedSolver(Solver):
         )
         ut.validate_solution(instance, solution)  # safety check
 
-        print("SUCCESS")
         pass
 
     def request_arrival(self, instance: CAHDInstance, solution: CAHDSolution):

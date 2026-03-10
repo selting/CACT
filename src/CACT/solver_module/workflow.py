@@ -94,25 +94,25 @@ def _execute_job(
             timer.stop()
             mlflow.log_metric("runtime_total", timer.duration)
             solver_params = solver.params
-            if hasattr(solver, "auction"):
-                auction_params = solver.auction.params
-                print(
-                    "SUCCESS",
-                    f"Solved instance {instance}\n"
-                    f"with solver:\n"
-                    f"{pformat(solver_params)}\n"
-                    f"with auction:\n"
-                    f"{pformat(auction_params)}\n"
-                    f"at {datetime.now()}\n",
-                )
-            else:
-                print(
-                    f"SUCCESS"
-                    f"Solved instance {instance}\n"
-                    f"with solver\n"
-                    f"{pformat(solver_params)}\n"
-                    f"at {datetime.now()}"
-                )
+            # if hasattr(solver, "auction"):
+            #     auction_params = solver.auction.params
+            #     print(
+            #         "SUCCESS",
+            #         f"Solved instance {instance}\n"
+            #         f"with solver:\n"
+            #         f"{pformat(solver_params)}\n"
+            #         f"with auction:\n"
+            #         f"{pformat(auction_params)}\n"
+            #         f"at {datetime.now()}\n",
+            #     )
+            # else:
+            #     print(
+            #         f"SUCCESS"
+            #         f"Solved instance {instance}\n"
+            #         f"with solver\n"
+            #         f"{pformat(solver_params)}\n"
+            #         f"at {datetime.now()}"
+            #     )
 
         except Exception as e:
             solver_params = solver.params

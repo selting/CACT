@@ -154,7 +154,7 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
             opt_policy(max_num_function_evaluations, **hyperparams)
             for opt_policy, hyperparams in [
                 (TrulyRandomSearch, {}),
-                # (BayesianOptimizationPolicy, {}),
+                (BayesianOptimizationPolicy, {}),
             ]
             + [
                 (
@@ -193,7 +193,7 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
                     #
                     # (nlopt.LN_PRAXIS, False),  # performed poorly before
                     #
-                    # (nlopt.LN_NELDERMEAD, False),
+                    (nlopt.LN_NELDERMEAD, False),
                     #
                     # (nlopt.LN_SBPLX, False),
                 ]

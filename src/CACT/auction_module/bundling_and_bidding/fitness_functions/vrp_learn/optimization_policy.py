@@ -29,13 +29,13 @@ class OptimizationPolicy(ParameterizedClass):
     def __repr__(self):
         return self.__class__.__name__
 
-    def _is_new_opt(self, target_function, target_value, current_target_opt):
+    def _is_better(self, target_function, current_value, best_known_value):
         # return (target_function.direction == 'min' and target_value < current_target_opt) or \
         #     (target_function.direction == 'max' and target_value > current_target_opt)
         if target_function.direction == "min":
-            return target_value < current_target_opt
+            return current_value < best_known_value
         elif target_function.direction == "max":
-            return target_value > current_target_opt
+            return current_value > best_known_value
 
     def _get_init_target_opt(self, target_function: TargetFunction):
         return float("inf") if target_function.direction == "min" else -float("inf")
@@ -112,7 +112,7 @@ class _StaticSearch(OptimizationPolicy):
             target_value = target_function(instance, auction_request_pool, **suggestion)
 
             # Check if this is a new optimal value
-            if self._is_new_opt(target_function, target_value, target_opt):
+            if self._is_better(target_function, target_value, target_opt):
                 target_opt = target_value
                 target_opt_params = suggestion
 
@@ -247,7 +247,7 @@ class BayesianOptimizationPolicy(OptimizationPolicy):
                 instance=instance, auction_request_pool=auction_request_pool, **params
             )
 
-            if self._is_new_opt(target_function, target, target_opt):
+            if self._is_better(target_function, target, target_opt):
                 target_opt = target
                 target_opt_params = params
 
@@ -371,7 +371,7 @@ class Nlopt(OptimizationPolicy):
             target = target_function(
                 instance=instance, auction_request_pool=auction_request_pool, **params
             )
-            if self._is_new_opt(target_function, target, target_opt):
+            if self._is_better(target_function, target, target_opt):
                 if (
                     not self._lexicographic_ordering_constraint
                     or _lexicographic_ordering(x, grad) <= 0

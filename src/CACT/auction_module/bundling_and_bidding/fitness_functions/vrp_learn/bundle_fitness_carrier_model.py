@@ -359,9 +359,8 @@ class BundleFitnessCarrierModel(BundleFitnessFunction):
                 carrier_model=carrier_model,
                 X=queries[carrier_idx],
                 y_true=responses[carrier_idx],
-                direction="min",
+                direction="min",  # TODO should ideally be defined by self._error_function
                 target_func_pnames=carrier_model.params_names,
-                # target_func_pbounds=instance.meta["type"],
                 target_func_pbounds=pbounds,
             )
             target_opt, target_opt_params = self._optimization_policy.optimize(
@@ -369,14 +368,14 @@ class BundleFitnessCarrierModel(BundleFitnessFunction):
             )
             self._models[carrier_idx].current_params = target_opt_params
 
-            # compute the metrics
-            y_true = responses[carrier_idx]
-            y_pred = carrier_model.compute_bid_on_bundles(
+            # compute the bid prediction metrics
+            bids_true = responses[carrier_idx]
+            bids_pred = carrier_model.compute_bid_on_bundles(
                 instance, queries[carrier_idx]
             )  # costly ...
             fit_metrics_carrier = dict()
             for metric in self._prediction_metrics:
-                metric_value = metric(y_true, y_pred)
+                metric_value = metric(bids_true, bids_pred)
                 fit_metrics_carrier[metric.__name__] = metric_value
             fit_metrics_carrier["target_opt"] = target_opt
             fit_results.append(fit_metrics_carrier)
