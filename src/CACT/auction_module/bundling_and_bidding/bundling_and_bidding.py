@@ -1,3 +1,4 @@
+import datetime
 from typing import Any
 
 import mlflow
@@ -93,6 +94,20 @@ class BundlingAndBidding(ParameterizedClass):
         # mlflow.log_metric('runtime_next_queries', self._next_queries.__call__.cumulative_times['__call__'])
         # mlflow.log_metric('runtime_get_responses', self.get_responses.cumulative_times['get_responses'])
 
+        # logging the final true and predicted coordinates
+        if hasattr(self._fitness_function, '_bundle_fitness'):
+            if isinstance(self._fitness_function._bundle_fitness, BundleFitnessCarrierModel):
+                for carrier_idx in range(len(solution.carriers)):
+                    carrier = solution.carriers[carrier_idx]
+                    carrier_model = self._fitness_function._bundle_fitness._models[carrier_idx]
+                    coords_true = np.array([(r.x, r.y) for r in carrier.accepted_requests])
+                    coords_true = pd.DataFrame(coords_true, columns=['x', 'y'])
+                    coords_pred = np.array([(carrier_model.current_params[f'x{i}'], carrier_model.current_params[f'y{i}'])
+                                    for i in range(len(carrier_model.current_params) // 2)])
+                    coords_pred = pd.DataFrame(coords_pred, columns=['x', 'y'])
+                    mlflow.log_table(coords_true, f'{instance.id_}-true.json')
+                    mlflow.log_table(coords_pred, f'{instance.id_}-pred.json')
+
         return queries, responses
 
     def _initial_queries(self, solution: CAHDSolution, auction_request_pool: tuple[Request],
@@ -137,26 +152,26 @@ class BundlingAndBidding(ParameterizedClass):
                                       my_tsp_obj_val_diff,
                                       my_MinWBMP,
                                       ]
-                records = []
-                cases = []
+                # records = []
+                # cases = []
                 # for carrier, carrier_model in zip(solution.carriers, self._fitness_function._bundle_fitness._models):
                 for carrier_idx in range(len(solution.carriers)):
                     carrier = solution.carriers[carrier_idx]
                     carrier_model = self._fitness_function._bundle_fitness._models[carrier_idx]
-                    A = np.array([(r.x, r.y) for r in carrier.accepted_requests])
-                    B = np.array([(carrier_model.current_params[f'x{i}'], carrier_model.current_params[f'y{i}'])
+                    coords_true = np.array([(r.x, r.y) for r in carrier.accepted_requests])
+                    coords_pred = np.array([(carrier_model.current_params[f'x{i}'], carrier_model.current_params[f'y{i}'])
                                   for i in range(len(carrier_model.current_params) // 2)])
-                    cases.append((A, B))
-                    record = {'carrier': carrier.id_}
+                    # cases.append((A, B))
+                    # record = {'carrier': carrier.id_}
                     for dist_func in all_distance_funcs:
-                        dist_value = dist_func(A, B)
+                        dist_value = dist_func(coords_true, coords_pred)
                         mlflow.log_metric(f'{dist_func.__name__}_{carrier_idx}', dist_value)
                         # print(f'{dist_func.__name__}({carrier.id_}) = {dist_value}')
-                    records.append(record)
+                    # records.append(record)
                 # log the average of the distance across carriers & the distance measure figure
-                dist_df = pd.DataFrame.from_records(records, index='carrier')
-                mean_df = dist_df.mean(numeric_only=True, axis=0)
-                mlflow.log_metrics(dict(mean_df), timestamp=t)
+                # dist_df = pd.DataFrame.from_records(records, index='carrier')
+                # mean_df = dist_df.mean(numeric_only=True, axis=0)
+                # mlflow.log_metrics(dict(mean_df), timestamp=t)
                 # fig = plot_cases(cases, all_distance_funcs)
                 # mlflow.log_figure(fig, artifact_file="distance_measures.png")
 
