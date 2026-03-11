@@ -322,7 +322,7 @@ def instance_file_selector_2(
             "No instance existst for the given filter: \n", filter_criteria
         )
 
-    return matched_files
+    return sorted(matched_files)
 
 
 # def instance_selector(run=None, rad=None, n=None):
