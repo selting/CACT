@@ -11,7 +11,6 @@ from auction_module.bundling_and_bidding.fitness_functions.vrp_learn.distance im
     my_hausdorff_distance, my_modified_hausdorff_distance, my_MinWBMP, my_convex_hull_jaccard_distance, \
     my_tsp_obj_val_diff, _solve_tsp, my_tsp_hull_jaccard_distance, _my_d_six)
 
-plt.style.use('ggplot')
 
 
 def my_plot(true, pred, depot):

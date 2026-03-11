@@ -121,7 +121,7 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
                     higher_is_better=False,
                     optimization_policy=optimization_policy,
                     error_function=error_function,
-                    num_unknown_orders=4,  # TODO make this variable?
+                    num_unknown_orders=num_unknown_orders,
                     num_vehicles=1,  # TODO make this variable?
                     routing_solver=RoutingSolver(
                         request_insertion_feasibility_check=SimpleInsertionRIFC(),
@@ -199,8 +199,8 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
                 ]
             ]
             for max_num_function_evaluations in [
-                256,
-                # 8
+                8
+                # 256,
             ]
         ]
         for error_function in [
@@ -210,6 +210,11 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
             # mean_squared_error,
             root_mean_squared_error,
             # r2_score,
+        ]
+        for num_unknown_orders in [
+            # 2,
+            4,
+            # 8,
         ]
         for num_bidding_jobs in [
             # 4

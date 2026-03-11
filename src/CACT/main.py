@@ -1,14 +1,17 @@
 from pathlib import Path
-
+import matplotlib.pyplot as plt
+import scienceplots 
 from solver_module import workflow, config
 from utility_module import io
 from utility_module.argparse_utils import parser
+
+plt.style.use(["science", "grid"])
 
 if __name__ == "__main__":
     print("START main.py")
     # read command line arguments
     args = parser.parse_args().__dict__
-    
+
     # TODO include these instance selection parameters into the argument parser
     paths = io.instance_file_selector_2(
         Path("src/CACT/data/instances/euclidean_instances_rev1"),

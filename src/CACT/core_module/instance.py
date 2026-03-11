@@ -371,9 +371,12 @@ class CAHDInstance:
             distance_matrix=inst["_travel_distance_matrix"],
         )
 
-    def plot(self):
-        plt.style.use("ggplot")
-        fig, ax = plt.subplots()
+    def plot(self, ax:plt.Axes = None):
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.figure
+            
         for carrier_idx in range(self.num_carriers):
             carrier_requests = [
                 r for r in self.requests if r.initial_carrier_assignment == carrier_idx
@@ -383,7 +386,7 @@ class CAHDInstance:
                 self.depots[carrier_idx].x,
                 self.depots[carrier_idx].y,
                 marker="s",
-                label=f"Depot {self.depots[carrier_idx].label}",
+                label=f"{self.depots[carrier_idx].label}",
                 s=60,
                 c=f"C{carrier_idx}",
                 edgecolors="k",
@@ -391,32 +394,21 @@ class CAHDInstance:
                 zorder=100,
             )
             plt.scatter(
-                *zip(*xy), label=f"Carrier {carrier_idx} requests", c=f"C{carrier_idx}"
+                *zip(*xy), label=f"Carrier {carrier_idx} requests", c=f"C{carrier_idx}", edgecolors="k", linewidths=0.5
             )
-        # Shrink current axis by 20%
+
+        if "bounding_box_x_min" in self.meta:
+            plt.xlim(self.meta["bounding_box_x_min"], self.meta["bounding_box_x_max"])
+            plt.ylim(self.meta["bounding_box_y_min"], self.meta["bounding_box_y_max"])
+
+        # Shrink current axis by 20% to make space for the legend
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
 
-        # plt.xlim(self.min_x_coord, self.max_x_coord)
-        # plt.ylim(self.min_y_coord, self.max_y_coord)
-
         # Put a legend to the right of the current axis
         ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-        plt.show()
+        return fig, ax
 
-        # fig, ax = plt.subplots()
-        # for carrier_idx in range(self.num_carriers):
-        #     carrier_requests = [r for r in self.requests if r.initial_carrier_assignment == carrier_idx]
-        #     xy = [(r.x, r.y) for r in carrier_requests]
-        #     plt.scatter(*zip(*xy), label=f'Carrier {carrier_idx} requests', c=f'C{carrier_idx}')
-        #     ax.scatter(self.depots[carrier_idx].x, self.depots[carrier_idx].y,
-        #                marker='s', label=f'Depot {self.depots[carrier_idx].label}',
-        #                s=60, c=f'C{carrier_idx}', edgecolors='k')
-        #
-        # plt.grid()
-        # ax.legend()
-        # plt.show()
-        pass
 
 
 if __name__ == "__main__":
