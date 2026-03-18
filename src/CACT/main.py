@@ -1,6 +1,6 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
-import scienceplots 
+import scienceplots  # pyright: ignore[reportMissingImports]
 from solver_module import workflow, config
 from utility_module import io
 from utility_module.argparse_utils import parser

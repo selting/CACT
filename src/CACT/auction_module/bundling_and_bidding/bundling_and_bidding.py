@@ -100,13 +100,16 @@ class BundlingAndBidding(ParameterizedClass):
                 for carrier_idx in range(len(solution.carriers)):
                     carrier = solution.carriers[carrier_idx]
                     carrier_model = self._fitness_function._bundle_fitness._models[carrier_idx]
-                    coords_true = np.array([(r.x, r.y) for r in carrier.accepted_requests])
-                    coords_true = pd.DataFrame(coords_true, columns=['x', 'y'])
-                    coords_pred = np.array([(carrier_model.current_params[f'x{i}'], carrier_model.current_params[f'y{i}'])
+                    coords_true = np.array([(r.x, r.y, carrier_idx, "true") for r in carrier.accepted_requests])
+                    # coords_true = pd.DataFrame(coords_true, columns=['x', 'y', 'carrier_idx'])
+                    coords_pred = np.array([(carrier_model.current_params[f'x{i}'], carrier_model.current_params[f'y{i}'], carrier_idx, "pred")
                                     for i in range(len(carrier_model.current_params) // 2)])
-                    coords_pred = pd.DataFrame(coords_pred, columns=['x', 'y'])
-                    mlflow.log_table(coords_true, f'{instance.id_}-true.json')
-                    mlflow.log_table(coords_pred, f'{instance.id_}-pred.json')
+                    # coords_pred = pd.DataFrame(coords_pred, columns=['x', 'y', 'carrier_idx'])
+                    # mlflow.log_table(coords_true, f'{instance.id_}-true.json')
+                    # mlflow.log_table(coords_pred, f'{instance.id_}-pred.json')
+                    coords_both = np.concatenate([coords_true, coords_pred], axis=0)
+                    coords_df = pd.DataFrame(coords_both, columns=['x', 'y', 'carrier_idx', 'type'])
+                    mlflow.log_table(coords_df, f'{instance.id_}-coords.json')
 
         return queries, responses
 
