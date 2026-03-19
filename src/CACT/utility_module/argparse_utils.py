@@ -1,5 +1,5 @@
 import argparse
-
+import datetime as dt
 
 # def custom_parser(string: str):
 #     if '-' in string:
@@ -43,4 +43,4 @@ parser.add_argument('--fail_on_error',
 parser.add_argument('--tag',
                     help='tag for the mlflow logs',
                     type=str,
-                    default='default_tag')
+                    default=dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
