@@ -12,7 +12,11 @@ if __name__ == "__main__":
     # read command line arguments
     args = parser.parse_args().__dict__
 
-    # TODO include these instance selection parameters into the argument parser
+    print("Python received the following arguments:")
+    for key, value in args.items():
+        print(f"  {key}: {value}")
+
+    # TODO integrate these instance selection parameters into the argument parser
     paths = io.instance_file_selector_2(
         Path("src/CACT/data/instances/euclidean_instances_rev1"),
         dict(
