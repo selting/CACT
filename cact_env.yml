@@ -19,6 +19,7 @@ dependencies:
   - pyomo
   - python=3.10
   - pytorch
+  - scienceplots
   - scikit-learn
   - scipy
   - seaborn
