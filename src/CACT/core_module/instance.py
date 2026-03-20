@@ -1,4 +1,5 @@
 import datetime as dt
+import itertools
 import json
 import math
 from functools import cached_property
@@ -67,13 +68,17 @@ class CAHDInstance:
                 f"Vertex at index {idx} has uid {vertex.uid}. vertices must be sorted by uid "
                 f"and uids must be strictly increasing without gaps"
             )
-        assert self.requests == sorted(
-            self.requests
-        ), f"Request are not sorted by index: {[r.index for r in self.requests]}"
+        assert self.requests == sorted(self.requests), (
+            f"Request are not sorted by index: {[r.index for r in self.requests]}"
+        )
 
         for depot in self.depots:
-            assert depot.tw_close == self.depots[0].tw_close, "all depots must open at the same time"
-            assert depot.tw_close == self.depots[0].tw_close, "all depots must close at the same time"
+            assert depot.tw_close == self.depots[0].tw_close, (
+                "all depots must open at the same time"
+            )
+            assert depot.tw_close == self.depots[0].tw_close, (
+                "all depots must close at the same time"
+            )
 
         for idx, request in zip(range(len(self.requests)), self.requests):
             assert request.index == idx, (
@@ -82,7 +87,7 @@ class CAHDInstance:
             )
             execution_start_time = self.depots[0].tw_open
             execution_stop_time = self.depots[0].tw_close
-            assert (request.disclosure_time <= execution_start_time)
+            assert request.disclosure_time <= execution_start_time
             assert execution_start_time <= request.tw_open <= execution_stop_time
             assert execution_start_time <= request.tw_close <= execution_stop_time
             assert request.load <= self.max_vehicle_load
@@ -291,7 +296,9 @@ class CAHDInstance:
         data["vertex_revenue"] = [None] * self.num_carriers + [
             r.revenue for r in self.requests
         ]
-        data["vertex_load"] = [None] * self.num_carriers + [r.load for r in self.requests]
+        data["vertex_load"] = [None] * self.num_carriers + [
+            r.load for r in self.requests
+        ]
         data["vertex_service_duration"] = [None] * self.num_carriers + [
             r.service_duration.total_seconds() for r in self.requests
         ]
@@ -371,44 +378,54 @@ class CAHDInstance:
             distance_matrix=inst["_travel_distance_matrix"],
         )
 
-    def plot(self, ax:plt.Axes = None):
+    def plot(self, ax: plt.Axes = None):
         if ax is None:
             fig, ax = plt.subplots()
         else:
             fig = ax.figure
-            
+        ax: plt.Axes
+        markers = itertools.cycle(['o', 's', '^', 'D', 'x', ])
         for carrier_idx in range(self.num_carriers):
+            marker = next(markers)
             carrier_requests = [
                 r for r in self.requests if r.initial_carrier_assignment == carrier_idx
             ]
             xy = [(r.x, r.y) for r in carrier_requests]
-            plt.scatter(
+            ax.scatter(
                 self.depots[carrier_idx].x,
                 self.depots[carrier_idx].y,
-                marker="s",
+                marker=marker,
                 label=f"{self.depots[carrier_idx].label}",
-                s=60,
-                c=f"C{carrier_idx}",
-                edgecolors="k",
-                linewidths=1.5,
+                # s=150,
+                # c=f"C{carrier_idx}",
+                facecolors="k",
+                # edgecolors="k",
+                # linewidths=1.5,
                 zorder=100,
+                # alpha=0.7
             )
-            plt.scatter(
-                *zip(*xy), label=f"Carrier {carrier_idx} requests", c=f"C{carrier_idx}", edgecolors="k", linewidths=0.5
+            ax.scatter(
+                *zip(*xy),
+                marker=marker,
+                label=f"Carrier {carrier_idx} requests",
+                # c=f"C{carrier_idx}",
+                facecolors="none",
+                edgecolors="k",
+                linewidths=0.5,
+                alpha=0.7,
             )
 
         if "bounding_box_x_min" in self.meta:
-            plt.xlim(self.meta["bounding_box_x_min"], self.meta["bounding_box_x_max"])
-            plt.ylim(self.meta["bounding_box_y_min"], self.meta["bounding_box_y_max"])
+            ax.set_xlim(self.meta["bounding_box_x_min"], self.meta["bounding_box_x_max"])
+            ax.set_ylim(self.meta["bounding_box_y_min"], self.meta["bounding_box_y_max"])
 
         # Shrink current axis by 20% to make space for the legend
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
+        # box = ax.get_position()
+        # ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
 
-        # Put a legend to the right of the current axis
-        ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+        # # Put a legend to the right of the current axis
+        # ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
         return fig, ax
-
 
 
 if __name__ == "__main__":
