@@ -29,7 +29,17 @@ def execute_jobs(
     n_jobs = len(paths) * len(solvers)
     jobs = itertools.product(paths, solvers, [fail_on_error], [mlflow_group_id])
     
-    mlflow.set_tracking_uri("sqlite:///src/CACT/data/experiments/cact.db")
+    # check if an mlflow tracking uri is already set, if not set it to a local sqlite db
+
+    # mlflow.set_tracking_uri("sqlite:///src/CACT/data/experiments/cact.db")
+    # use MLFLOW_TRACKING_URI environment variable if set, otherwise default to local sqlite db
+    if mlflow.get_tracking_uri() is None:
+        mlflow.set_tracking_uri("sqlite:///src/CACT/data/experiments/cact.db")
+        print(
+            "No MLflow tracking URI set. Defaulting to local SQLite database at src/CACT/data/experiments/cact.db"
+        )
+    else:
+        print(f"MLflow tracking URI is set to {mlflow.get_tracking_uri()}")
 
     # select single or multithreaded solving
     if num_threads == 1:
