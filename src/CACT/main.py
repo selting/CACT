@@ -16,6 +16,8 @@ if __name__ == "__main__":
     for key, value in args.items():
         print(f"  {key}: {value}")
 
+    exit(0)
+
     # TODO integrate these instance selection parameters into the argument parser
     paths = io.instance_file_selector_2(
         Path("src/CACT/data/instances/euclidean_instances_rev1"),
@@ -23,7 +25,7 @@ if __name__ == "__main__":
             type="euclidean",
             dist_center_to_carrier=[25],
             num_carriers=[3],
-            num_requests_per_carrier=[16],
+            num_requests_per_carrier=[8],
             carriers_max_num_tours=[1],
             carrier_competition=[1],
             run=range(200),

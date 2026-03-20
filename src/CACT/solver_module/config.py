@@ -199,8 +199,8 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
                 ]
             ]
             for max_num_function_evaluations in [
-                8
-                # 256,
+                # 8
+                256,
             ]
         ]
         for error_function in [
@@ -212,16 +212,17 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
             # r2_score,
         ]
         for num_unknown_orders in [
-            # 2,
+            2,
             4,
-            # 8,
+            8,
+            # 16,
         ]
         for num_bidding_jobs in [
             # 4
-            # 16,
+            16,
             32,
-            # 64,
-            # 128,
+            64,
+            128,
         ]
     ]
 
