@@ -16,7 +16,6 @@ if __name__ == "__main__":
     for key, value in args.items():
         print(f"  {key}: {value}")
 
-    exit(0)
 
     # TODO integrate these instance selection parameters into the argument parser
     paths = io.instance_file_selector_2(
