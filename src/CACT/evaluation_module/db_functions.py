@@ -250,7 +250,7 @@ def fetch_runs_experiment_tags_params_metrics(db_url,run_uuids: list, num_rows):
     return df
 
 
-def fetch_filtered_tags(db_url,un_uuids: list):
+def fetch_filtered_tags(db_url,run_uuids: list):
     where_condition = ', '.join(map(lambda x: f'\'{x}\'', run_uuids))
 
     # join (in SQL) with the runs table to get the experiment_id, name, start_time, end_time, and status
