@@ -278,7 +278,7 @@ def instance_file_selector(
 
 def instance_file_selector_2(
     dir_path: str, filter_criteria: Dict[str, List[Any]]
-) -> List[str]:
+) -> List[Path]:
     """
     Scans a directory for JSON files and filters them based on nested 'desc' values.
 
@@ -312,7 +312,7 @@ def instance_file_selector_2(
                     break
 
             if is_match:
-                matched_files.append(str(file_path))
+                matched_files.append(file_path)
 
         except (json.JSONDecodeError, PermissionError) as e:
             print(f"Skipping {file_path.name}: {e}")

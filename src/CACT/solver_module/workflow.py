@@ -40,7 +40,22 @@ def execute_jobs(
         )
     else:
         print(f"MLflow tracking URI is set to {mlflow.get_tracking_uri()}")
-
+    
+    # pre-generate all experiments in mlflow to avoid race conditions when multiple processes try to create the same experiment concurrently
+    client = mlflow.MlflowClient()
+    for path in paths:
+        exp_name = path.stem
+        exp = client.get_experiment_by_name(exp_name)
+        if exp is None:
+            try:
+                client.create_experiment(exp_name)
+            except mlflow.MlflowException as e:
+                # If another process created it concurrently, ignore the error
+                if "RESOURCE_ALREADY_EXISTS" in str(e) or "already exists" in str(e):
+                    pass
+                else:
+                    raise e
+    
     # select single or multithreaded solving
     if num_threads == 1:
         solutions_and_auctions = []
@@ -79,10 +94,29 @@ def _execute_job(
     mlflow_group_id,
 ):
     instance = CAHDInstance.from_json(path)
-    mlflow_experiment = mlflow.set_experiment(experiment_name=f"{instance.id_}")
+
+    exp_name = f"{instance.id_}"
+    client = mlflow.MlflowClient()
+
+    exp = client.get_experiment_by_name(exp_name)
+    if exp is None:
+        try:
+            exp_id = client.create_experiment(exp_name)
+        except mlflow.MlflowException as e:
+            # If another process created it concurrently, fetch it
+            if "RESOURCE_ALREADY_EXISTS" in str(e) or "already exists" in str(e):
+                exp = client.get_experiment_by_name(exp_name)
+                if exp is None:
+                    raise
+                exp_id = exp.experiment_id
+            else:
+                raise
+    else:
+        exp_id = exp.experiment_id
+
     # TODO seed management needs an overhaul. Pass the seed/randomstate around or attach it to the instance?
     with mlflow.start_run(
-        experiment_id=mlflow_experiment.experiment_id,
+        experiment_id=exp_id,
         tags={"instance_id": instance.id_, "group_id": mlflow_group_id},
     ):
         seed = generate_unique_seed(
