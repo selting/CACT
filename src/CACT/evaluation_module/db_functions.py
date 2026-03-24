@@ -3,8 +3,6 @@ import time
 import pandas as pd
 
 from sqlalchemy import create_engine
-import sqlite3
-
 from key_mapping import key_mapping
 from value_mapping import value_mapping
 

@@ -3,7 +3,11 @@ import re
 import numpy as np
 
 import key_mapping, value_mapping
-from db_functions import fetch_filtered_run_uuids, query_to_df, string_to_numeric_or_timedelta
+from db_functions import (
+    fetch_filtered_run_uuids,
+    query_to_df,
+    string_to_numeric_or_timedelta,
+)
 
 
 def add_grouped_mean_columns(
@@ -100,7 +104,6 @@ def get_multi_carrier_metrics(df, pattern=r"^(.*?)_(\d+)$", inplace=False):
 
     # Decide whether to modify in place or return a copy
     if inplace:
-
         output_df = df  # Work directly on the input DataFrame
     else:
         output_df = df.copy()  # Work on a copy
@@ -184,11 +187,13 @@ def complete_steps_fast(df: pd.DataFrame, fill_value=np.nan):
     return result
 
 
-def parameters_and_metrics(sqlite_path, tag_filters: dict, param_filters: dict):
+def parameters_and_metrics(
+    db_url, tag_filters: dict, param_filters: dict
+) -> tuple[pd.DataFrame]:
     """
     get the selected runs' parameters and metrics in a long format table
     """
-    RUN_UUIDS_CACHE = fetch_filtered_run_uuids(sqlite_path, tag_filters, param_filters)
+    RUN_UUIDS_CACHE = fetch_filtered_run_uuids(db_url, tag_filters, param_filters)
 
     where_condition = ", ".join(map(lambda x: f"'{x}'", RUN_UUIDS_CACHE))
     query_runs = f"""
@@ -198,7 +203,7 @@ def parameters_and_metrics(sqlite_path, tag_filters: dict, param_filters: dict):
         RUNS R
     WHERE R.RUN_UUID IN ({where_condition})
     """
-    df_runs = query_to_df(sqlite_path, query_runs)
+    df_runs = query_to_df(db_url, query_runs)
 
     query_experiments = f"""
     SELECT
@@ -206,7 +211,7 @@ def parameters_and_metrics(sqlite_path, tag_filters: dict, param_filters: dict):
     FROM
         EXPERIMENTS
     """
-    df_experiments = query_to_df(sqlite_path, query_experiments)
+    df_experiments = query_to_df(db_url, query_experiments)
 
     query_tags = f"""
     SELECT
@@ -215,7 +220,7 @@ def parameters_and_metrics(sqlite_path, tag_filters: dict, param_filters: dict):
         TAGS T
     WHERE RUN_UUID IN ({where_condition})
     """
-    df_tags = query_to_df(sqlite_path, query_tags)
+    df_tags = query_to_df(db_url, query_tags)
     df_tags_wide = df_tags.pivot(columns="key", index="run_uuid", values="value")
 
     query_params = f"""
@@ -225,7 +230,7 @@ def parameters_and_metrics(sqlite_path, tag_filters: dict, param_filters: dict):
         PARAMS P
     WHERE RUN_UUID IN ({where_condition})
     """
-    df_params = query_to_df(sqlite_path, query_params)
+    df_params = query_to_df(db_url, query_params)
     # NOTE sometimes, some params are stored multiple times, i.e. as arrays -> keep only the last entry
     df_params.drop_duplicates(subset=["key", "run_uuid"], keep="last", inplace=True)
 
@@ -237,7 +242,9 @@ def parameters_and_metrics(sqlite_path, tag_filters: dict, param_filters: dict):
     PARAMS = pd.merge(PARAMS, df_params_wide, on="run_uuid")
 
     # replace and rename
-    PARAMS = PARAMS.replace(value_mapping.value_mapping)  # will raise in future versions of pandas
+    PARAMS = PARAMS.replace(
+        value_mapping.value_mapping
+    )  # will raise in future versions of pandas
     PARAMS = PARAMS.rename(columns=key_mapping.key_mapping)
 
     # transform to the correct data types
@@ -251,7 +258,7 @@ def parameters_and_metrics(sqlite_path, tag_filters: dict, param_filters: dict):
         METRICS M
     WHERE RUN_UUID IN ({where_condition})
     """
-    df_metrics = query_to_df(sqlite_path, query_metrics)
+    df_metrics = query_to_df(db_url, query_metrics)
     df_metrics["timestamp"] = pd.to_datetime(df_metrics["timestamp"], unit="ms")
     df_metrics = complete_steps_fast(df_metrics)
     df_metrics = df_metrics.replace(
