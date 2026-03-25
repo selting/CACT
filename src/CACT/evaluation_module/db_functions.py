@@ -3,8 +3,8 @@ import time
 import pandas as pd
 
 from sqlalchemy import create_engine
-from key_mapping import key_mapping
-from value_mapping import value_mapping
+from evaluation_module.key_mapping import key_mapping
+from evaluation_module.value_mapping import value_mapping
 
 
 def get_db_engine(db_url: str):

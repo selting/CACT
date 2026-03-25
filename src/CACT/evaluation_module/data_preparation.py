@@ -2,8 +2,9 @@ import pandas as pd
 import re
 import numpy as np
 
-import key_mapping, value_mapping
-from db_functions import (
+from evaluation_module import key_mapping
+from evaluation_module import value_mapping
+from evaluation_module.db_functions import (
     fetch_filtered_run_uuids,
     query_to_df,
     string_to_numeric_or_timedelta,

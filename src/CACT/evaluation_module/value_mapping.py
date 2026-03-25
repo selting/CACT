@@ -1,4 +1,4 @@
-from key_mapping import key_mapping
+from evaluation_module.key_mapping import key_mapping
 
 value_mapping = {
     'auction__request_reallocation': {
