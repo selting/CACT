@@ -213,8 +213,8 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
         ]
         for num_unknown_orders in [
             2,
-            4,
-            8,
+            # 4,
+            # 8,
             # 16,
         ]
         for num_bidding_jobs in [
