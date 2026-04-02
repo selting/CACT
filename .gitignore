@@ -221,3 +221,4 @@ src/CACT/data/experiments/
 src/CACT/data/instances/euclidean_instances_rev1 
 src/CACT/data/figures/
 mlruns/
+*.pdf
