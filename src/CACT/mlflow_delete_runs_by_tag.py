@@ -25,26 +25,27 @@ def delete_runs_by_tag(tag: str, dry_run: bool = False):
     """
     Set runs with the given tag to 'deleted' lifecycle stage
     """
-    CACT_DB_URL = os.getenv('CACT_DB_URL')
-    if not CACT_DB_URL:
-        raise EnvironmentError("CACT_DB_URL environment variable must be defined")
+    BACKEND_STORE_URI = os.getenv('BACKEND_STORE_URI')
+    if not BACKEND_STORE_URI:
+        raise EnvironmentError("BACKEND_STORE_URI environment variable must be defined")
     MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI')
     if not MLFLOW_TRACKING_URI:
         raise EnvironmentError("MLFLOW_TRACKING_URI environment variable must be defined")
-
     # Get all runs with the specified tag
-    run_uuids = fetch_filtered_run_uuids(db_url=CACT_DB_URL, tag_filters={"group_id": [tag]})
-
+    run_uuids = fetch_filtered_run_uuids(db_url=BACKEND_STORE_URI, tag_filters={"group_id": [tag]}, param_filters={})
     # Set them to status "deleted"
     client = mlflow.MlflowClient(MLFLOW_TRACKING_URI)
-    for run_uuid in tqdm(run_uuids, desc=f"Deleting runs {'(dry-run)' if dry_run else ''}'):"):
+    for run_uuid in tqdm(run_uuids, desc=f"Setting runs to 'deleted' in mlflow {'(dry-run)' if dry_run else ''}:"):
         if not dry_run:
-            client.delete_run(run_uuid, delete_artifacts=False)
-
+            client.delete_run(run_uuid)
     # use mlflow CLI command 'mlflow gc' to permanently delete the runs from the database
     if dry_run:
         print("Dry run mode: No runs will be deleted from the database")
     else:
+        print("running mlflow gc to fully delete the runs from the database. Are you sure [y/n]?")
+        if input().lower() != 'y':
+            print("Aborting garbage collection")
+            return
         result = subprocess.run(['mlflow', 'gc'], capture_output=True)
         # Get the output of the command
         output = result.stdout.decode()
@@ -70,4 +71,7 @@ if __name__ == "__main__":
             exit(1)
         else:
             print("Proceeding with deletion.")
-            delete_runs_by_tag(tag)
+            delete_runs_by_tag(tag, dry_run=dry_run)
+    else:
+        print(f"Export of runs with tag '{tag}' found. Proceeding with deletion.")
+        delete_runs_by_tag(tag, dry_run=dry_run)

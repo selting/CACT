@@ -9,9 +9,9 @@ parser.add_argument('--tag', nargs=1, type=str)
 
 
 def export_params_and_metrics(tag: str, out_dir: Path = Path('src/CACT/data/experiments/exports')):
-    db_url = os.getenv('CACT_DB_URL')
+    db_url = os.getenv('BACKEND_STORE_URI')
     if db_url is None:
-        raise EnvironmentError("CACT_DB_URL environment variable must be defined")
+        raise EnvironmentError("BACKEND_STORE_URI environment variable must be defined")
     tag_filters = {"group_id": tag}
     params, metrics = parameters_and_metrics(db_url=db_url, tag_filters=tag_filters, param_filters=None)
     print(f'Getting data from {db_url} with tag {tag}')
