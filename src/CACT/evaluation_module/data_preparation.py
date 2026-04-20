@@ -206,7 +206,7 @@ def parameters_and_metrics(
     """
     df_runs = query_to_df(db_url, query_runs)
 
-    query_experiments = f"""
+    query_experiments = """
     SELECT
         *
     FROM
@@ -275,7 +275,7 @@ def parameters_and_metrics(
     METRICS = METRICS.rename(columns=key_mapping.key_mapping)
 
     # transform to the correct data types
-    METRICS = string_to_numeric_or_timedelta(METRICS)
+    METRICS = string_to_numeric_or_timedelta(METRICS, exceptions=['group_id'])
 
     # melt/unpivot to get the long format again
     METRICS = METRICS.melt(id_vars=["run_uuid", "step"])
