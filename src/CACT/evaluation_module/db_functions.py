@@ -23,7 +23,7 @@ def query_to_df(db_url: str, query: str) -> pd.DataFrame:
     try:
         # Using a context manager ensures the connection is properly closed
         with engine.connect() as conn:
-            df = pd.read_sql(query, conn)
+            df = pd.read_sql(query, conn, )
     except Exception as e:
         # Log the error here if needed, then raise
         raise e
@@ -316,7 +316,7 @@ def fetch_params_and_metrics(db_url, run_uuids: list):
     return combined
 
 
-def string_to_numeric_or_timedelta(df: pd.DataFrame) -> pd.DataFrame:
+def string_to_numeric_or_timedelta(df: pd.DataFrame, exceptions:list) -> pd.DataFrame:
     """
     Function to convert columns of type 'object' or 'string' to numeric or timedelta.
     This function is useful when reading data from a database where the data types are not preserved.
@@ -326,6 +326,8 @@ def string_to_numeric_or_timedelta(df: pd.DataFrame) -> pd.DataFrame:
     :return:
     """
     for col in df.columns:
+        if col in exceptions:
+            continue
         # Check if the column is of type 'object' or 'string'
         if df[col].dtype == 'object' or pd.api.types.is_string_dtype(df[col]):
             try:

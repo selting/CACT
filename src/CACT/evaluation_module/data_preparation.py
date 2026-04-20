@@ -249,7 +249,7 @@ def parameters_and_metrics(
     PARAMS = PARAMS.rename(columns=key_mapping.key_mapping)
 
     # transform to the correct data types
-    PARAMS = string_to_numeric_or_timedelta(PARAMS)
+    PARAMS = string_to_numeric_or_timedelta(PARAMS, exceptions=['group_id'])
 
     # get the metrics data
     query_metrics = f"""

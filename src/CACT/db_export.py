@@ -13,8 +13,8 @@ def export_params_and_metrics(tag: str, out_dir: Path = Path('src/CACT/data/expe
     if db_url is None:
         raise EnvironmentError("BACKEND_STORE_URI environment variable must be defined")
     tag_filters = {"group_id": tag}
-    params, metrics = parameters_and_metrics(db_url=db_url, tag_filters=tag_filters, param_filters=None)
     print(f'Getting data from {db_url} with tag {tag}')
+    params, metrics = parameters_and_metrics(db_url=db_url, tag_filters=tag_filters, param_filters=None)
     params: pd.DataFrame
     metrics: pd.DataFrame
     params_file = out_dir.joinpath(f"{tag}-params.parquet")
