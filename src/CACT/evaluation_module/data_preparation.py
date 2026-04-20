@@ -249,7 +249,7 @@ def parameters_and_metrics(
     PARAMS = PARAMS.rename(columns=key_mapping.key_mapping)
 
     # transform to the correct data types
-    PARAMS = string_to_numeric_or_timedelta(PARAMS, exceptions=['group_id'])
+    # PARAMS = string_to_numeric_or_timedelta(PARAMS, exceptions=['group_id'])
 
     # get the metrics data
     query_metrics = f"""
@@ -275,7 +275,7 @@ def parameters_and_metrics(
     METRICS = METRICS.rename(columns=key_mapping.key_mapping)
 
     # transform to the correct data types
-    METRICS = string_to_numeric_or_timedelta(METRICS, exceptions=['group_id'])
+    # METRICS = string_to_numeric_or_timedelta(METRICS, exceptions=['group_id'])
 
     # melt/unpivot to get the long format again
     METRICS = METRICS.melt(id_vars=["run_uuid", "step"])
