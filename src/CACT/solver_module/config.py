@@ -221,8 +221,8 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
             # 4
             # 16,
             # 32,
-            64,
-            # 128,
+            # 64,
+            128,
         ]
     ]
 
