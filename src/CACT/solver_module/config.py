@@ -220,8 +220,8 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
         for num_bidding_jobs in [
             # 4
             # 16,
-            32,
-            # 64,
+            # 32,
+            64,
             # 128,
         ]
     ]
