@@ -261,7 +261,7 @@ def parameters_and_metrics(
     """
     df_metrics = query_to_df(db_url, query_metrics)
     df_metrics["timestamp"] = pd.to_datetime(df_metrics["timestamp"], unit="ms")
-    df_metrics = complete_steps_fast(df_metrics)
+    # df_metrics = complete_steps_fast(df_metrics)  # TODO: WHY???
     df_metrics = df_metrics.replace(
         {"value": {np.finfo(np.float64).max: np.inf}}
     )  # replace max floats with proper np.inf
