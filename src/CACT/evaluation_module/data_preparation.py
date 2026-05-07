@@ -265,23 +265,27 @@ def parameters_and_metrics(
     df_metrics = df_metrics.replace(
         {"value": {np.finfo(np.float64).max: np.inf}}
     )  # replace max floats with proper np.inf
-    # pivot to enable replacing and renaming
-    print(f'*** df_metrics before pivot:\n{df_metrics.head()}\nshape:{df_metrics.shape}, size:{df_metrics.size}, number of is_nan:{df_metrics["is_nan"].sum()}')
-    METRICS = df_metrics.pivot(
-        columns="key", index=["run_uuid", "step"], values="value"
-    ).reset_index()
-    print(f'*** METRICS after pivot:\n{METRICS.head()}\nshape:{METRICS.shape}, size:{METRICS.size}, number of NaN:{METRICS.isna().sum().sum()}')
+    
+    # pivot to enable replacing and renaming: TODO THIS blows the df dramatically. Can I avoid this?!
+    # print(f'*** df_metrics before pivot:\n{df_metrics.head()}\nshape:{df_metrics.shape}, size:{df_metrics.size}, number of is_nan:{df_metrics["is_nan"].sum()}')
+    # METRICS = df_metrics.pivot(
+    #     columns="key", index=["run_uuid", "step"], values="value"
+    # ).reset_index()
+    # print(f'*** METRICS after pivot:\n{METRICS.head()}\nshape:{METRICS.shape}, size:{METRICS.size}, number of NaN:{METRICS.isna().sum().sum()}')
 
-    # replace and rename
-    METRICS = METRICS.replace(value_mapping.value_mapping)
-    METRICS = METRICS.rename(columns=key_mapping.key_mapping)
+    # # replace and rename
+    # METRICS = METRICS.replace(value_mapping.value_mapping)
+    # METRICS = METRICS.rename(columns=key_mapping.key_mapping)
 
-    # transform to the correct data types
-    METRICS = string_to_numeric_or_timedelta(METRICS, exceptions=['group_id'])
+    # # transform to the correct data types
+    # METRICS = string_to_numeric_or_timedelta(METRICS, exceptions=['group_id'])
 
-    # melt/unpivot to get the long format again
-    METRICS = METRICS.melt(id_vars=["run_uuid", "step"])
-    print(f'*** METRICS final:\n{METRICS.head()}\nshape:{METRICS.shape}, size:{METRICS.size}, number of NaN:{METRICS.isna().sum().sum()}')
+    # # melt/unpivot to get the long format again
+    # METRICS = METRICS.melt(id_vars=["run_uuid", "step"])
+    # print(f'*** METRICS final:\n{METRICS.head()}\nshape:{METRICS.shape}, size:{METRICS.size}, number of NaN:{METRICS.isna().sum().sum()}')
+
+    # New approach: skip all the transformations, simply get the necessary columns
+    METRICS = df_metrics[['run_uuid', 'step', 'key', 'value']]
 
     return PARAMS, METRICS
 
