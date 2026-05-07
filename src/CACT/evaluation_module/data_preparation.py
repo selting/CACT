@@ -266,9 +266,11 @@ def parameters_and_metrics(
         {"value": {np.finfo(np.float64).max: np.inf}}
     )  # replace max floats with proper np.inf
     # pivot to enable replacing and renaming
+    print(f'*** df_metrics before pivot:\n{df_metrics.head()}\nshape:{df_metrics.shape}')
     METRICS = df_metrics.pivot(
         columns="key", index=["run_uuid", "step"], values="value"
     ).reset_index()
+    print(f'*** METRICS after pivot:\n{METRICS.head()}')
 
     # replace and rename
     METRICS = METRICS.replace(value_mapping.value_mapping)
