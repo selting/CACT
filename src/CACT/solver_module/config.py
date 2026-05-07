@@ -212,10 +212,10 @@ def configs() -> Generator[CollaborativeSolver, Any, None]:
             # r2_score,
         ]
         for num_unknown_orders in [
-            # 2,
+            2,
             # 4,
             # 8,
-            16,
+            # 16,
         ]
         for num_bidding_jobs in [
             # 4

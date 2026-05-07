@@ -24,7 +24,7 @@ if __name__ == "__main__":
             type="euclidean",
             dist_center_to_carrier=[25],
             num_carriers=[3],
-            num_requests_per_carrier=[16],
+            num_requests_per_carrier=[8],
             carriers_max_num_tours=[1],
             carrier_competition=[1],
             run=range(200),
