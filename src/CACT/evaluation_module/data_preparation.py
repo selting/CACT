@@ -270,7 +270,7 @@ def parameters_and_metrics(
     METRICS = df_metrics.pivot(
         columns="key", index=["run_uuid", "step"], values="value"
     ).reset_index()
-    print(f'*** METRICS after pivot:\n{METRICS.head()}')
+    print(f'*** METRICS after pivot:\n{METRICS.head()}\nshape:{METRICS.shape}')
 
     # replace and rename
     METRICS = METRICS.replace(value_mapping.value_mapping)
@@ -281,6 +281,7 @@ def parameters_and_metrics(
 
     # melt/unpivot to get the long format again
     METRICS = METRICS.melt(id_vars=["run_uuid", "step"])
+    print(f'*** METRICS final:\n{METRICS.head()}\nshape:{METRICS.shape}')
 
     return PARAMS, METRICS
 
