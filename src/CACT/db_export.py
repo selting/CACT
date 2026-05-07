@@ -9,6 +9,9 @@ parser.add_argument('--tag', nargs=1, type=str)
 
 def get_incremental_file_name(base_filename):
     path = Path(base_filename)
+    if not path.exists():
+        return path
+
     stem = path.stem   # e.g., "data"
     suffix = path.suffix # e.g., ".parquet"
     directory = path.parent
@@ -35,11 +38,13 @@ def export_params_and_metrics(tag: str, out_dir: Path = Path('src/CACT/data/expe
     metrics: pd.DataFrame
 
     params_file = out_dir.joinpath(f"{tag}-params.parquet")
-    params.to_parquet(get_incremental_file_name(params_file))
+    params_file = get_incremental_file_name(params_file)
+    params.to_parquet(params_file)
     print(f"params written to: {params_file} ")
 
     metrics_file = out_dir.joinpath(f"{tag}-metrics.parquet")
-    metrics.to_parquet(get_incremental_file_name(metrics_file))
+    metrics_file = get_incremental_file_name(metrics_file)
+    metrics.to_parquet(metrics_file)
     print(f"metrics written to: {metrics_file} ")
     pass
 
