@@ -1,4 +1,4 @@
-from functools import partial
+from functools import cache, partial
 
 import nlopt
 import numpy as np
@@ -40,7 +40,7 @@ def draw_bundles(rng: np.random.Generator, size_auction_pool, num_bundles, aucti
             # Append the actual numpy array to your final list
             bundles.append(bundle_tuple)
             
-    return bundles
+    return tuple(bundles)
 
 
 def solve_tsp(locations):
@@ -59,7 +59,7 @@ def solve_tsp(locations):
             distance = abs(frm.x - to.x) + abs(frm.y - to.y)  # Manhattan
             m.add_edge(frm, to, distance=distance)
 
-    res = m.solve(stop=MaxRuntime(1), display=False)  # one second
+    res = m.solve(stop=MaxRuntime(0.5), display=False)  # one second
     min_cost = res.best.distance_cost()
     return min_cost
 
@@ -106,7 +106,7 @@ def solve_tsp(locations):
 #     print("The cost of most efficient tour = " + str(ans))
 
 
-def compute_bids(base_locations: np.array, bundles: np.array):
+def compute_bids(base_locations: np.array, bundles: list[np.array]):
     # compute tsp without bundle
     objective_without_bundle = solve_tsp(base_locations)
     bids = []
@@ -120,13 +120,24 @@ def compute_bids(base_locations: np.array, bundles: np.array):
 
 
 def rmse(y_pred, y):
-    return np.sqrt(np.mean((np.array(y_pred) - np.array(y)) ** 2))
+    rmse = np.sqrt(np.mean((np.array(y_pred) - np.array(y)) ** 2))
+    return rmse
+
+@cache
+def _evaluate_candidate_cached(x:tuple[float], bundles:tuple[tuple[tuple[float, float]]]):
+    # Reconstruct the correct 2d shape
+    x_2d = np.array(x).reshape(-1, 2, copy=True)
+    
+    # Run the expensive bidding simulation
+    bids_pred = compute_bids(x_2d, bundles)
+    return x_2d, bids_pred
 
 
+# --- 2. The User Facing Target Function (Called by NLopt) ---
 def target_function(
     x: np.array,
     grad,
-    bundles: np.array,
+    bundles: tuple[tuple[tuple]],
     bids,
     proxy_objective_func,
     _true_base_locations: np.array,
@@ -135,46 +146,119 @@ def target_function(
     proxy_objective_buffer: list,
     true_objective_buffer: list,
 ):
-    """target function for the nlopt optimizer. some parameters must be fixed/freezed using partial()
-
-    Args:
-        x (np.array): the optimization parameters. nlopt uses flat 1D arrays, so some reshaping is done internally to obtain 2D coordinates
-        grad (_type_): gradient, not applicable, since I will only use derivative-free solvers
-        bundles (np.array): _description_
-        bids (_type_): _description_
-        proxy_objective_func (_type_): proxy objective, e.g. rmse. (for nlopt, this is the "true" objecitve, but not for us)
-        _true_base_locations (np.array): _description_
-        true_objective_funcs (list[callable]): a list of set distance measures such as e.g. the hausdorff distance
-        trajectory_buffer (list): a buffer that will be expanded in-place to keep track of explored parameters
-        proxy_objective_buffer (list): buffer to track the proxy objective
-        true_objective_buffer (list): buffer to track the true objectives
-
-    Returns:
-        float: the objective function value of the proxy objective
-    """
-    print(f'\nx: {x}')
-    # transform the nlopt candidate to 2d coordinates
-    pred_base_locations = x.reshape(-1, 2)
-    trajectory_buffer.append(pred_base_locations)
-    # get the bids that a carrier would give, if pred_base_locations were its base locations
-    bids_pred = compute_bids(pred_base_locations, bundles)
-    # compute the proxy objective, e.g. rmse
+    print(f'>> calling the user target function with x={x}')
+    
+    # Normalize input
+    pairs = x.reshape(-1, 2)
+    norm_x_tuple = tuple(num for pair in sorted(pairs.tolist()) for num in pair)
+    
+    # Fetch from cache or compute fresh (returns view/copy of 2d geometry)
+    print(f'>> evaluate 2d geometry for x={norm_x_tuple}\n\tbundles={bundles}')
+    pred_base_locations, bids_pred = _evaluate_candidate_cached(norm_x_tuple, bundles)
+    
+    # --- 3. Logging & Buffers (Always runs, keeping history completely intact!) ---
+    trajectory_buffer.append(pred_base_locations.copy()) # Copy ensures array state is frozen in time
+    
+    # Compute proxy objective
     proxy_objective_value = proxy_objective_func(bids_pred, bids)
-    print(f'\tf(x): {proxy_objective_value}')
     proxy_objective_buffer.append(proxy_objective_value)
-
-    # now comes the new part: compute also the TRUE objective(s), e.g. hausdorff; I will have to log these, too, somehow
-    # an alternative way would be to handle optimizer iterations manually by setting mexeval=1, and feeding the last returned value back as x0. But not sure if the optimizers need access to their search history or smth similar...
+    print(f"\tf(x): {proxy_objective_value}")
+    
+    # Compute true objectives
     true_objective_values = {}
     for true_objective_func in true_objective_funcs:
-        true_objective_val = true_objective_func(
-            pred_base_locations, _true_base_locations
-        )
+        true_objective_val = true_objective_func(pred_base_locations, _true_base_locations)
         true_objective_values[true_objective_func.__name__] = true_objective_val
-        print(f'\t{true_objective_func.__name__}: {true_objective_val}')
+        print(f"\t{true_objective_func.__name__}: {true_objective_val}")
     true_objective_buffer.append(true_objective_values)
-
+    
     return proxy_objective_value
+
+# def target_function(
+#     x: np.array,
+#     grad,
+#     bundles: np.array,
+#     bids,
+#     proxy_objective_func,
+#     _true_base_locations: np.array,
+#     true_objective_funcs: list[callable],
+#     trajectory_buffer: list,
+#     proxy_objective_buffer: list,
+#     true_objective_buffer: list,
+# ):
+#     print(f'>> calling the user target function with x={x}')
+#     # normalize the input, i.e. lexicographic ordering
+#     pairs = zip(x[0::2], x[1::2])
+#     norm_x = tuple(num for pair in sorted(pairs) for num in pair)
+#     print(f'>> normalized input passed to internal funcion is norm_x={norm_x}')
+#     return _target_function_internal(
+#         x=norm_x,
+#         grad=grad,
+#         bundles=bundles,
+#         bids=bids,
+#         proxy_objective_func=proxy_objective_func,
+#         _true_base_locations=_true_base_locations,
+#         true_objective_funcs=true_objective_funcs,
+#         trajectory_buffer=trajectory_buffer,
+#         proxy_objective_buffer=proxy_objective_buffer,
+#         true_objective_buffer=true_objective_buffer,
+#     )
+
+# @cache
+# def _target_function_internal(
+#     x: tuple,
+#     grad,
+#     bundles: np.array,
+#     bids,
+#     proxy_objective_func,
+#     _true_base_locations: np.array,
+#     true_objective_funcs: list[callable],
+#     trajectory_buffer: list,
+#     proxy_objective_buffer: list,
+#     true_objective_buffer: list,
+# ):
+#     """target function for the nlopt optimizer. some parameters must be fixed/freezed using partial()
+
+#     Args:
+#         x (np.array): the optimization parameters. nlopt uses flat 1D arrays, so some reshaping is done internally to obtain 2D coordinates
+#         grad (_type_): gradient, not applicable, since I will only use derivative-free solvers
+#         bundles (np.array): _description_
+#         bids (_type_): _description_
+#         proxy_objective_func (_type_): proxy objective, e.g. rmse. (for nlopt, this is the "true" objecitve, but not for us)
+#         _true_base_locations (np.array): _description_
+#         true_objective_funcs (list[callable]): a list of set distance measures such as e.g. the hausdorff distance
+#         trajectory_buffer (list): a buffer that will be expanded in-place to keep track of explored parameters
+#         proxy_objective_buffer (list): buffer to track the proxy objective
+#         true_objective_buffer (list): buffer to track the true objectives
+
+#     Returns:
+#         float: the objective function value of the proxy objective
+#     """
+#     print(f'>> calling the internal target function')
+#     print(f"\nx: {x}")
+#     # transform the nlopt candidate to 2d coordinates
+#     x = np.array(x)
+#     pred_base_locations = x.reshape(-1, 2, copy=True)
+#     trajectory_buffer.append(pred_base_locations)
+#     # get the bids that a carrier would give, if pred_base_locations were its base locations
+#     bids_pred = compute_bids(pred_base_locations, bundles)
+#     # compute the proxy objective, e.g. rmse
+#     proxy_objective_value = proxy_objective_func(bids_pred, bids)
+#     print(f"\tf(x): {proxy_objective_value}")
+#     proxy_objective_buffer.append(proxy_objective_value)
+
+#     # now comes the new part: compute also the TRUE objective(s), e.g. hausdorff; I will have to log these, too, somehow
+#     # an alternative way would be to handle optimizer iterations manually by setting mexeval=1, and feeding the last returned value back as x0. But not sure if the optimizers need access to their search history or smth similar...
+#     true_objective_values = {}
+#     for true_objective_func in true_objective_funcs:
+#         true_objective_val = true_objective_func(
+#             pred_base_locations, _true_base_locations
+#         )
+#         true_objective_values[true_objective_func.__name__] = true_objective_val
+#         print(f"\t{true_objective_func.__name__}: {true_objective_val}")
+#     true_objective_buffer.append(true_objective_values)
+
+#     return proxy_objective_value
 
 
 def auctioneer_optimize(
