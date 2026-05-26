@@ -14,12 +14,32 @@ from tqdm import trange
 from scipy.spatial.distance import squareform, pdist
 
 
-def draw_bundles(rng, size_auction_pool, num_bundles, auction_pool):
+def draw_bundles(rng: np.random.Generator, size_auction_pool, num_bundles, auction_pool:tuple[tuple]):
+    # Use a set of tuples to track uniqueness cleanly without broadcasting issues
+    unique_bundles = set()
     bundles = []
-    for _ in range(num_bundles):
-        bundle_size = rng.choice(size_auction_pool)
-        bundle = rng.choice(auction_pool, bundle_size)
-        bundles.append(bundle)
+    
+    # Just in case: handle a pool array that might be multi-dimensional or a list
+    # auction_pool = np.asarray(auction_pool)
+    
+    while len(bundles) < num_bundles:
+        # 1 & 2. Random size between 1 and size_auction_pool (inclusive)
+        bundle_size = rng.choice(np.arange(1, size_auction_pool + 1))
+        
+        # Draw items WITHOUT replacement so a single bundle doesn't have internal duplicates
+        bundle_ind = rng.choice(len(auction_pool), size=bundle_size, replace=False)
+        bundle_tuple = tuple(auction_pool[i] for i in bundle_ind)
+        
+        # Sort the bundle elements to ensure that bundles with identical items 
+        # in different orders (e.g., [1, 2] and [2, 1]) are flagged as duplicates
+        bundle_sorted_tuple = tuple(sorted(bundle_tuple))
+        
+        # 3. Check for duplicates safely using the set
+        if bundle_sorted_tuple not in unique_bundles:
+            unique_bundles.add(bundle_sorted_tuple)
+            # Append the actual numpy array to your final list
+            bundles.append(bundle_tuple)
+            
     return bundles
 
 
@@ -228,6 +248,7 @@ def run(
     num_bundles,
     true_num_locations,
     pred_num_locations,
+    opt_algorithm,
     maxeval,
 ):
     true_base_locations = rng.uniform(
@@ -237,6 +258,7 @@ def run(
     auction_pool = rng.uniform(
         (X_MIN, Y_MIN), (X_MAX, Y_MAX), size=(size_auction_pool, 2)
     )
+    auction_pool = tuple(tuple(row) for row in auction_pool.tolist())
     # draw random bundles of random size
     bundles = draw_bundles(rng, size_auction_pool, num_bundles, auction_pool)
     carrier_bids = compute_bids(
