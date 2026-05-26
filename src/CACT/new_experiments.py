@@ -202,7 +202,7 @@ def auctioneer_optimize(
         params_lower_bounds, params_upper_bounds, size=(num_locations_to_estimate, 2)
     ).flatten()
     xopt = optimizer.optimize(x0)
-    xopt = xopt.reshape(-1, 2)
+    xopt = xopt.reshape(-1, 2, copy=True)
     opt_val = optimizer.last_optimum_value()
     return_code = optimizer.last_optimize_result()
     if return_code > 0:
@@ -235,7 +235,7 @@ def run(
     )
     ##### compute carrier bids based on bundles and set_a (true locations)
     auction_pool = rng.uniform(
-        (X_MIN, Y_MIN), (X_MAX, X_MIN), size=(size_auction_pool, 2)
+        (X_MIN, Y_MIN), (X_MAX, Y_MAX), size=(size_auction_pool, 2)
     )
     # draw random bundles of random size
     bundles = draw_bundles(rng, size_auction_pool, num_bundles, auction_pool)
@@ -249,7 +249,7 @@ def run(
         bids=carrier_bids,
         num_locations_to_estimate=pred_num_locations,
         _true_base_locations=true_base_locations,
-        opt_algorithm=nlopt.GN_DIRECT_L_RAND,
+        opt_algorithm=opt_algorithm,
         params_lower_bounds=[X_MIN, Y_MIN],
         params_upper_bounds=[X_MAX, Y_MAX],
         rng=rng,
@@ -266,46 +266,19 @@ def run(
 
 
 if __name__ == "__main__":
-    seed = 1
-    rng = np.random.default_rng(seed)
-
-    X_MIN, X_MAX, Y_MIN, Y_MAX = 0, 100, 0, 100
-    num_draws = 3
-    size_auction_pool = 12
-    num_bundles = 3
-
-    records = []
-    for true_num_locations in [8, 16]:
-        for frac_pred_locations in [0.5, 1, 2]:
-            pred_num_locations = int(true_num_locations * frac_pred_locations)
-            for draw in trange(
-                num_draws, desc=f"{true_num_locations} x {pred_num_locations}"
-            ):
-                params = {
-                    "x_min": X_MIN,
-                    "x_max": X_MAX,
-                    "y_min": Y_MIN,
-                    "y_max": Y_MAX,
-                    "true_num_locations": true_num_locations,
-                    "pred_num_locations": pred_num_locations,
-                    "pred_frac_locations": frac_pred_locations,
-                    "seed": seed,
-
-                }
-
-                optimize_result = run(
-                    rng,
-                    X_MIN,
-                    X_MAX,
-                    Y_MIN,
-                    Y_MAX,
-                    size_auction_pool,
-                    num_bundles,
-                    true_num_locations,
-                    pred_num_locations,
-                )
-
-                record = {**params, **optimize_result}
-                records.append(record)
-    df = pd.DataFrame.from_records(records)
-    print(df.to_string(index=False))
+    optimize_result = run(
+        rng=np.random.default_rng(1),
+        X_MIN=0,
+        X_MAX=100,
+        Y_MIN=0,
+        Y_MAX=100,
+        size_auction_pool = 12,
+        num_bundles=8,
+        true_num_locations=4,
+        pred_num_locations=4,
+        # opt_algorithm=nlopt.GN_CRS2_LM,
+        opt_algorithm=nlopt.GN_DIRECT_L_RAND,
+        maxeval=8
+    )
+    print(optimize_result)
+    print('Done.')
