@@ -1,5 +1,6 @@
 from functools import cache, partial
 
+from joblib import Parallel, delayed
 import nlopt
 import numpy as np
 from auction_module.bundling_and_bidding.fitness_functions.vrp_learn.distance import (
@@ -11,32 +12,34 @@ from pyvrp import Model
 from pyvrp.stop import MaxRuntime
 
 
-def draw_bundles(rng: np.random.Generator, size_auction_pool, num_bundles, auction_pool:tuple[tuple]):
+def draw_bundles(
+    rng: np.random.Generator, size_auction_pool, num_bundles, auction_pool: tuple[tuple]
+):
     # Use a set of tuples to track uniqueness cleanly without broadcasting issues
     unique_bundles = set()
     bundles = []
-    
+
     # Just in case: handle a pool array that might be multi-dimensional or a list
     # auction_pool = np.asarray(auction_pool)
-    
+
     while len(bundles) < num_bundles:
         # 1 & 2. Random size between 1 and size_auction_pool (inclusive)
         bundle_size = rng.choice(np.arange(1, size_auction_pool + 1))
-        
+
         # Draw items WITHOUT replacement so a single bundle doesn't have internal duplicates
         bundle_ind = rng.choice(len(auction_pool), size=bundle_size, replace=False)
         bundle_tuple = tuple(auction_pool[i] for i in bundle_ind)
-        
-        # Sort the bundle elements to ensure that bundles with identical items 
+
+        # Sort the bundle elements to ensure that bundles with identical items
         # in different orders (e.g., [1, 2] and [2, 1]) are flagged as duplicates
         bundle_sorted_tuple = tuple(sorted(bundle_tuple))
-        
+
         # 3. Check for duplicates safely using the set
         if bundle_sorted_tuple not in unique_bundles:
             unique_bundles.add(bundle_sorted_tuple)
             # Append the actual numpy array to your final list
             bundles.append(bundle_tuple)
-            
+
     return tuple(bundles)
 
 
@@ -116,12 +119,40 @@ def compute_bids(base_locations: np.array, bundles: list[np.array]):
     return bids
 
 
+def _worker(base_locations, bundle, objective_without_bundle, solver_func):
+    tsp_locations = np.concatenate([base_locations, bundle], axis=0)
+    # Using a passed solver function for future flexibility
+    objective_with_bundle = solver_func(tsp_locations)
+    return objective_with_bundle - objective_without_bundle
+
+def compute_bids_parallel(
+    base_locations: np.array, 
+    bundles: list[np.array], 
+    solver_func=solve_tsp, 
+    n_jobs=-1
+):
+    # Baseline calculation
+    objective_without_bundle = solver_func(base_locations)
+    
+    # CURRENTLY: Use "threading" because PyVRP is C++ based
+    # FUTURE: If you switch to a pure Python solver, just change backend to "multiprocessing"
+    bids = Parallel(n_jobs=n_jobs, backend="multiprocessing")(
+        delayed(_worker)(base_locations, bundle, objective_without_bundle, solver_func)
+        for bundle in bundles
+    )
+    
+    return bids
+
+
 def rmse(y_pred, y):
     rmse = np.sqrt(np.mean((np.array(y_pred) - np.array(y)) ** 2))
     return rmse
 
+
 @cache
-def _evaluate_candidate_cached(x:tuple[float], bundles:tuple[tuple[tuple[float, float]]]):
+def _evaluate_candidate_cached(
+    x: tuple[float], bundles: tuple[tuple[tuple[float, float]]]
+):
     """basically just a cached version of the compute_bids function to avoid costly recomputes if "the same" inputs have been given in the past already. "Same" in this application includes also permutations of previous candidates.
 
     Args:
@@ -133,9 +164,11 @@ def _evaluate_candidate_cached(x:tuple[float], bundles:tuple[tuple[tuple[float, 
     """
     # Reconstruct the correct 2d shape
     x_2d = np.array(x).reshape(-1, 2, copy=True)
-    
+
     # Run the expensive bidding simulation
-    bids_pred = compute_bids(x_2d, bundles)
+    # bids_pred = compute_bids(x_2d, bundles)
+    # test: parallel tsp solving
+    bids_pred = compute_bids_parallel(x_2d, bundles)
     return x_2d, bids_pred
 
 
@@ -172,25 +205,30 @@ def target_function(
     # Normalize input by sorting in 2D shape. This is what allows proper function caching.
     pairs = x.reshape(-1, 2)
     norm_x_tuple = tuple(num for pair in sorted(pairs.tolist()) for num in pair)
-    
+
     # Fetch from cache or compute fresh (returns view/copy of 2d geometry)
     pred_base_locations, bids_pred = _evaluate_candidate_cached(norm_x_tuple, bundles)
-    
+
     # Logging the trajectory
-    trajectory_buffer.append(pred_base_locations.copy()) # Copy ensures array state is frozen in time
-    
+    trajectory_buffer.append(
+        pred_base_locations.copy()
+    )  # Copy ensures array state is frozen in time
+
     # Logging the proxy obj value
     proxy_objective_value = proxy_objective_func(bids_pred, bids)
     proxy_objective_buffer.append(proxy_objective_value)
-    
+
     # logging true obj values
     true_objective_values = {}
     for true_objective_func in true_objective_funcs:
-        true_objective_val = true_objective_func(pred_base_locations, _true_base_locations)
+        true_objective_val = true_objective_func(
+            pred_base_locations, _true_base_locations
+        )
         true_objective_values[true_objective_func.__name__] = true_objective_val
     true_objective_buffer.append(true_objective_values)
-    
+
     return proxy_objective_value
+
 
 def auctioneer_optimize(
     bundles,
@@ -254,7 +292,7 @@ def auctioneer_optimize(
 
 
 def run(
-    rng,
+    seed,
     x_min,
     x_max,
     y_min,
@@ -266,19 +304,18 @@ def run(
     opt_algorithm,
     maxeval,
 ):
+    rng = np.random.default_rng(seed)
     true_base_locations = rng.uniform(
         (x_min, y_min), (x_max, y_max), size=(true_num_locations, 2)
     )
-    ##### compute carrier bids based on bundles and set_a (true locations)
     auction_pool = rng.uniform(
         (x_min, y_min), (x_max, y_max), size=(size_auction_pool, 2)
     )
     auction_pool = tuple(tuple(row) for row in auction_pool.tolist())
     # draw random bundles of random size
     bundles = draw_bundles(rng, size_auction_pool, num_bundles, auction_pool)
-    carrier_bids = compute_bids(
-        true_base_locations, bundles
-    )  # TODO add a depot to set_a whose location is known also to the auctioneer?
+    # TODO add a depot to set_a whose location is known also to the auctioneer?
+    carrier_bids = compute_bids(true_base_locations, bundles)
 
     # let the auctioneer use a derivative-free optimizer to reverse-engineer the true base locations using only the bidding information
     optimize_result = auctioneer_optimize(
@@ -309,13 +346,13 @@ if __name__ == "__main__":
         x_max=100,
         y_min=0,
         y_max=100,
-        size_auction_pool = 12,
+        size_auction_pool=12,
         num_bundles=8,
         true_num_locations=4,
         pred_num_locations=4,
         # opt_algorithm=nlopt.GN_CRS2_LM,
         opt_algorithm=nlopt.GN_DIRECT_L_RAND,
-        maxeval=8
+        maxeval=8,
     )
     print(optimize_result)
-    print('Done.')
+    print("Done.")
