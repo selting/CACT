@@ -2,7 +2,6 @@ from functools import cache, partial
 
 import nlopt
 import numpy as np
-import pandas as pd
 from auction_module.bundling_and_bidding.fitness_functions.vrp_learn.distance import (
     my_convex_hull_jaccard_distance,
     my_hausdorff_distance,
@@ -10,8 +9,6 @@ from auction_module.bundling_and_bidding.fitness_functions.vrp_learn.distance im
 )
 from pyvrp import Model
 from pyvrp.stop import MaxRuntime
-from tqdm import trange
-from scipy.spatial.distance import squareform, pdist
 
 
 def draw_bundles(rng: np.random.Generator, size_auction_pool, num_bundles, auction_pool:tuple[tuple]):
@@ -125,6 +122,15 @@ def rmse(y_pred, y):
 
 @cache
 def _evaluate_candidate_cached(x:tuple[float], bundles:tuple[tuple[tuple[float, float]]]):
+    """basically just a cached version of the compute_bids function to avoid costly recomputes if "the same" inputs have been given in the past already. "Same" in this application includes also permutations of previous candidates.
+
+    Args:
+        x (tuple[float]): the candidate parameters tested by a derivative-free black box optimizer, such as those of NLopt
+        bundles (tuple[tuple[tuple[float, float]]]): the bundles that are queried
+
+    Returns:
+        _type_: the 2D coordinate representation of the candidate input x (just a reshape) AND the predicted bids, assuming those coordinates were the base locations.
+    """
     # Reconstruct the correct 2d shape
     x_2d = np.array(x).reshape(-1, 2, copy=True)
     
@@ -133,7 +139,6 @@ def _evaluate_candidate_cached(x:tuple[float], bundles:tuple[tuple[tuple[float, 
     return x_2d, bids_pred
 
 
-# --- 2. The User Facing Target Function (Called by NLopt) ---
 def target_function(
     x: np.array,
     grad,
@@ -146,120 +151,46 @@ def target_function(
     proxy_objective_buffer: list,
     true_objective_buffer: list,
 ):
-    print(f'>> calling the user target function with x={x}')
-    
-    # Normalize input
+    """the user (and NLopt) -facing target function. Best to be used with functools.partial to obtain the version that
+    accepts only x (and a gradient).
+
+    Args:
+        x (np.array): candidate parameters (base location coords) to evaluate as a 1D array [x1, y1, x2, y2, ...]
+        grad (_type_): potentially a gradient, omitted in my case
+        bundles (tuple[tuple[tuple]]): the bundles that have been queried
+        bids (_type_): the bids that the carrier reported
+        proxy_objective_func (_type_): the loss to minimize, usually rmse
+        _true_base_locations (np.array): the actual base locations, leading underscore to highlight that these are not actually available during the optimization. Only used for tracking/logging.
+        true_objective_funcs (list[callable]): a list of set difference functions such as the hausdorff distance. must take as input two 2d sequences.
+        trajectory_buffer (list): and empty list that will be modified in-place to track the candidates that were evaluated
+        proxy_objective_buffer (list): empty list to track obj function values
+        true_objective_buffer (list): empty list to store true objective function values
+
+    Returns:
+        float: the obj value of the proxy obj function
+    """
+    # Normalize input by sorting in 2D shape. This is what allows proper function caching.
     pairs = x.reshape(-1, 2)
     norm_x_tuple = tuple(num for pair in sorted(pairs.tolist()) for num in pair)
     
     # Fetch from cache or compute fresh (returns view/copy of 2d geometry)
-    print(f'>> evaluate 2d geometry for x={norm_x_tuple}\n\tbundles={bundles}')
     pred_base_locations, bids_pred = _evaluate_candidate_cached(norm_x_tuple, bundles)
     
-    # --- 3. Logging & Buffers (Always runs, keeping history completely intact!) ---
+    # Logging the trajectory
     trajectory_buffer.append(pred_base_locations.copy()) # Copy ensures array state is frozen in time
     
-    # Compute proxy objective
+    # Logging the proxy obj value
     proxy_objective_value = proxy_objective_func(bids_pred, bids)
     proxy_objective_buffer.append(proxy_objective_value)
-    print(f"\tf(x): {proxy_objective_value}")
     
-    # Compute true objectives
+    # logging true obj values
     true_objective_values = {}
     for true_objective_func in true_objective_funcs:
         true_objective_val = true_objective_func(pred_base_locations, _true_base_locations)
         true_objective_values[true_objective_func.__name__] = true_objective_val
-        print(f"\t{true_objective_func.__name__}: {true_objective_val}")
     true_objective_buffer.append(true_objective_values)
     
     return proxy_objective_value
-
-# def target_function(
-#     x: np.array,
-#     grad,
-#     bundles: np.array,
-#     bids,
-#     proxy_objective_func,
-#     _true_base_locations: np.array,
-#     true_objective_funcs: list[callable],
-#     trajectory_buffer: list,
-#     proxy_objective_buffer: list,
-#     true_objective_buffer: list,
-# ):
-#     print(f'>> calling the user target function with x={x}')
-#     # normalize the input, i.e. lexicographic ordering
-#     pairs = zip(x[0::2], x[1::2])
-#     norm_x = tuple(num for pair in sorted(pairs) for num in pair)
-#     print(f'>> normalized input passed to internal funcion is norm_x={norm_x}')
-#     return _target_function_internal(
-#         x=norm_x,
-#         grad=grad,
-#         bundles=bundles,
-#         bids=bids,
-#         proxy_objective_func=proxy_objective_func,
-#         _true_base_locations=_true_base_locations,
-#         true_objective_funcs=true_objective_funcs,
-#         trajectory_buffer=trajectory_buffer,
-#         proxy_objective_buffer=proxy_objective_buffer,
-#         true_objective_buffer=true_objective_buffer,
-#     )
-
-# @cache
-# def _target_function_internal(
-#     x: tuple,
-#     grad,
-#     bundles: np.array,
-#     bids,
-#     proxy_objective_func,
-#     _true_base_locations: np.array,
-#     true_objective_funcs: list[callable],
-#     trajectory_buffer: list,
-#     proxy_objective_buffer: list,
-#     true_objective_buffer: list,
-# ):
-#     """target function for the nlopt optimizer. some parameters must be fixed/freezed using partial()
-
-#     Args:
-#         x (np.array): the optimization parameters. nlopt uses flat 1D arrays, so some reshaping is done internally to obtain 2D coordinates
-#         grad (_type_): gradient, not applicable, since I will only use derivative-free solvers
-#         bundles (np.array): _description_
-#         bids (_type_): _description_
-#         proxy_objective_func (_type_): proxy objective, e.g. rmse. (for nlopt, this is the "true" objecitve, but not for us)
-#         _true_base_locations (np.array): _description_
-#         true_objective_funcs (list[callable]): a list of set distance measures such as e.g. the hausdorff distance
-#         trajectory_buffer (list): a buffer that will be expanded in-place to keep track of explored parameters
-#         proxy_objective_buffer (list): buffer to track the proxy objective
-#         true_objective_buffer (list): buffer to track the true objectives
-
-#     Returns:
-#         float: the objective function value of the proxy objective
-#     """
-#     print(f'>> calling the internal target function')
-#     print(f"\nx: {x}")
-#     # transform the nlopt candidate to 2d coordinates
-#     x = np.array(x)
-#     pred_base_locations = x.reshape(-1, 2, copy=True)
-#     trajectory_buffer.append(pred_base_locations)
-#     # get the bids that a carrier would give, if pred_base_locations were its base locations
-#     bids_pred = compute_bids(pred_base_locations, bundles)
-#     # compute the proxy objective, e.g. rmse
-#     proxy_objective_value = proxy_objective_func(bids_pred, bids)
-#     print(f"\tf(x): {proxy_objective_value}")
-#     proxy_objective_buffer.append(proxy_objective_value)
-
-#     # now comes the new part: compute also the TRUE objective(s), e.g. hausdorff; I will have to log these, too, somehow
-#     # an alternative way would be to handle optimizer iterations manually by setting mexeval=1, and feeding the last returned value back as x0. But not sure if the optimizers need access to their search history or smth similar...
-#     true_objective_values = {}
-#     for true_objective_func in true_objective_funcs:
-#         true_objective_val = true_objective_func(
-#             pred_base_locations, _true_base_locations
-#         )
-#         true_objective_values[true_objective_func.__name__] = true_objective_val
-#         print(f"\t{true_objective_func.__name__}: {true_objective_val}")
-#     true_objective_buffer.append(true_objective_values)
-
-#     return proxy_objective_value
-
 
 def auctioneer_optimize(
     bundles,
@@ -324,10 +255,10 @@ def auctioneer_optimize(
 
 def run(
     rng,
-    X_MIN,
-    X_MAX,
-    Y_MIN,
-    Y_MAX,
+    x_min,
+    x_max,
+    y_min,
+    y_max,
     size_auction_pool,
     num_bundles,
     true_num_locations,
@@ -336,11 +267,11 @@ def run(
     maxeval,
 ):
     true_base_locations = rng.uniform(
-        (X_MIN, Y_MIN), (X_MAX, Y_MAX), size=(true_num_locations, 2)
+        (x_min, y_min), (x_max, y_max), size=(true_num_locations, 2)
     )
     ##### compute carrier bids based on bundles and set_a (true locations)
     auction_pool = rng.uniform(
-        (X_MIN, Y_MIN), (X_MAX, Y_MAX), size=(size_auction_pool, 2)
+        (x_min, y_min), (x_max, y_max), size=(size_auction_pool, 2)
     )
     auction_pool = tuple(tuple(row) for row in auction_pool.tolist())
     # draw random bundles of random size
@@ -356,8 +287,8 @@ def run(
         num_locations_to_estimate=pred_num_locations,
         _true_base_locations=true_base_locations,
         opt_algorithm=opt_algorithm,
-        params_lower_bounds=[X_MIN, Y_MIN],
-        params_upper_bounds=[X_MAX, Y_MAX],
+        params_lower_bounds=[x_min, y_min],
+        params_upper_bounds=[x_max, y_max],
         rng=rng,
         maxeval=maxeval,
         proxy_objective_func=rmse,
@@ -374,10 +305,10 @@ def run(
 if __name__ == "__main__":
     optimize_result = run(
         rng=np.random.default_rng(1),
-        X_MIN=0,
-        X_MAX=100,
-        Y_MIN=0,
-        Y_MAX=100,
+        x_min=0,
+        x_max=100,
+        y_min=0,
+        y_max=100,
         size_auction_pool = 12,
         num_bundles=8,
         true_num_locations=4,
