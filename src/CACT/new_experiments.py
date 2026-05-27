@@ -43,7 +43,7 @@ def draw_bundles(
     return tuple(bundles)
 
 
-def solve_tsp(locations):
+def solve_tsp_pyvrp(locations, stop=MaxRuntime(0.5)):
     "solve a tsp with given locations (2d np.array) using PyVRP. Other solvers could be used, e.g. dynamic programming for small enough instances."
     m = Model()
     m.add_vehicle_type(1)
@@ -59,7 +59,7 @@ def solve_tsp(locations):
             distance = abs(frm.x - to.x) + abs(frm.y - to.y)  # Manhattan
             m.add_edge(frm, to, distance=distance)
 
-    res = m.solve(stop=MaxRuntime(0.5), display=False)  # one second
+    res = m.solve(stop=stop, display=False)  # one second
     min_cost = res.best.distance_cost()
     return min_cost
 
@@ -108,12 +108,12 @@ def solve_tsp(locations):
 
 def compute_bids(base_locations: np.array, bundles: list[np.array]):
     # compute tsp without bundle
-    objective_without_bundle = solve_tsp(base_locations)
+    objective_without_bundle = solve_tsp_pyvrp(base_locations)
     bids = []
     for bundle in bundles:
         # compute tsp with bundle
         tsp_locations = np.concat([base_locations, bundle], axis=0)
-        objecvtive_with_bundle = solve_tsp(tsp_locations)
+        objecvtive_with_bundle = solve_tsp_pyvrp(tsp_locations)
         bid = objecvtive_with_bundle - objective_without_bundle
         bids.append(bid)
     return bids
@@ -128,8 +128,8 @@ def _worker(base_locations, bundle, objective_without_bundle, solver_func):
 def compute_bids_parallel(
     base_locations: np.array, 
     bundles: list[np.array], 
-    solver_func=solve_tsp, 
-    n_jobs=-1
+    solver_func=solve_tsp_pyvrp, 
+    n_jobs=12  # TODO should not be hardcoded
 ):
     # Baseline calculation
     objective_without_bundle = solver_func(base_locations)
@@ -278,12 +278,13 @@ def auctioneer_optimize(
     xopt = xopt.reshape(-1, 2, copy=True)
     opt_val = optimizer.last_optimum_value()
     return_code = optimizer.last_optimize_result()
+    trajectory_buffer_arr = np.array(trajectory_buffer)
     if return_code > 0:
         return {
             "xopt": xopt,
             "opt_val": opt_val,
             "return_code": return_code,
-            "trajectory": trajectory_buffer,
+            "trajectory": trajectory_buffer_arr,
             "proxy_objectives": proxy_objective_buffer,
             "true_objectives": true_objective_buffer,
         }
