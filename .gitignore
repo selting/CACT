@@ -222,3 +222,5 @@ src/CACT/data/instances/euclidean_instances_rev1
 src/CACT/data/figures/
 mlruns/
 *.pdf
+mlflow.db
+src/CACT/julia_cact/results/

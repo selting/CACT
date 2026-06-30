@@ -10,8 +10,7 @@ include("plotting.jl")
 function compute_bids(base_locations, bundles)
     # compute tsp without bundle
     objective_without_bundle = solve_tsp(base_locations)
-    bids = []
-    # TODO paralellize this!! one task per bundle
+    bids = []  # TODO pre-allocate, size is know ex ante
     for bundle in bundles
         # compute tsp with bundle
         tsp_locations = [base_locations; bundle]
@@ -23,7 +22,7 @@ function compute_bids(base_locations, bundles)
 end
 
 
-#TODO let's skip the function caching for now, we might add that later
+#TODO let's skip the function caching for now, we should add that later
 
 function target_function(;
     x::Vector,
