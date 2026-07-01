@@ -125,22 +125,23 @@ def _worker(base_locations, bundle, objective_without_bundle, solver_func):
     objective_with_bundle = solver_func(tsp_locations)
     return objective_with_bundle - objective_without_bundle
 
+
 def compute_bids_parallel(
-    base_locations: np.array, 
-    bundles: list[np.array], 
-    solver_func=solve_tsp_pyvrp, 
-    n_jobs=12  # TODO should not be hardcoded
+    base_locations: np.array,
+    bundles: list[np.array],
+    solver_func=solve_tsp_pyvrp,
+    n_jobs=12,  # TODO should not be hardcoded
 ):
     # Baseline calculation
     objective_without_bundle = solver_func(base_locations)
-    
+
     # CURRENTLY: Use "threading" because PyVRP is C++ based
     # FUTURE: If you switch to a pure Python solver, just change backend to "multiprocessing"
     bids = Parallel(n_jobs=n_jobs, backend="multiprocessing")(
         delayed(_worker)(base_locations, bundle, objective_without_bundle, solver_func)
         for bundle in bundles
     )
-    
+
     return bids
 
 
@@ -306,6 +307,7 @@ def run(
     maxeval,
 ):
     rng = np.random.default_rng(seed)
+    # TODO: true base locations, auction pool and bundles should be part of the input, not generated in here
     true_base_locations = rng.uniform(
         (x_min, y_min), (x_max, y_max), size=(true_num_locations, 2)
     )
@@ -337,7 +339,13 @@ def run(
         ],
     )
 
-    return optimize_result
+    return {
+        "true_base_locations": true_base_locations,
+        "auction_pool": auction_pool,
+        "bundles": bundles,
+        "carrier_bids": carrier_bids,
+        "optimize_result": optimize_result,
+    }
 
 
 if __name__ == "__main__":

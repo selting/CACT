@@ -95,8 +95,8 @@ if __name__ == "main":
                                         opt_algorithm=opt_algorithm,
                                         maxeval=maxeval,
                                     )
-                                    run_id = generate_param_hash(params)
-                                    seed = base_seed + int(run_id, 16) + trial_index
+                                    run_id = generate_param_hash({**params, trial_index:trial_index})
+                                    seed = base_seed + int(run_id, 16)
                                     params["seed"] = seed
 
                                     meta = dict(

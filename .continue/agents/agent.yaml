@@ -1,0 +1,19 @@
+name: Local Coding
+version: 1.0.0
+schema: v1
+models:
+  - name: local-chat
+    provider: ollama
+    model: gemma4:e4b
+    roles: [chat]
+
+  # Use one model for tool/agent workflows (recommended).
+  - name: local-agent
+    provider: ollama
+    model: qwen3-coder-next:q4_K_M
+    roles: [chat, edit, autocomplete]
+    capabilities: [tool_use]
+
+embeddingsProvider:
+  provider: ollama
+  model: nomic-embed-text
