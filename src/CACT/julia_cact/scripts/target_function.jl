@@ -1,4 +1,5 @@
-
+include("metrics.jl")
+include("tsp.jl")
 
 function compute_bids(base_locations, bundles)
     # compute tsp without bundle
