@@ -5,7 +5,7 @@ using HiGHS
 abstract type TSPSolver end
 
 @kwdef struct ExactJuMPSolver <: TSPSolver
-    optimizer  # e.g. HiGHS.Optimizer
+    optimizer=HiGHS.Optimizer  # e.g. HiGHS.Optimizer
     time_limit=Inf
     mip_rel_gap=1e-4
 end
@@ -21,7 +21,7 @@ struct TSPResult
     objective::Float64
     tour::Union{Vector{Int},Nothing}  # Nothing if you don't bother reconstructing it
     solve_time::Float64
-    optimal::Bool
+    optimal
 end
 
 
@@ -65,7 +65,7 @@ end
 subtour(x::Matrix{Float64}) = subtour(selected_edges(x, size(x, 1)), size(x, 1))
 subtour(x::AbstractMatrix{VariableRef}) = subtour(value.(x))
 
-function solve_tsp(solver::ExactJuMPSolver, locations::Matrix)
+function solve_tsp(solver::ExactJuMPSolver, locations::Matrix)::TSPResult
     # solve the traveling salesperson problem using JuMP
     # copied from the JuMP tutorial website
     # using the Iterative model: whenever a new subtour elimination constraint is added, start from scratch
@@ -95,7 +95,7 @@ function solve_tsp(solver::ExactJuMPSolver, locations::Matrix)
     return TSPResult(objective_value(model), cycle, total_time, termination_status(model))
 end
 
-function solve_tsp(::NearestNeighborSolver, locations::Matrix)
+function solve_tsp(::NearestNeighborSolver, locations::Matrix)::TSPResult
     t0 = time()
     distances = pairwise(Euclidean(), locations')
     n = size(distances, 1)

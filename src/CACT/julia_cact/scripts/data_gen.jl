@@ -1,6 +1,6 @@
 using Distributions
-# using StatsBase
 using Random
+include("target_function.jl")
 
 function draw_bundles(; rng, num_bundles::Int, auction_pool::Matrix)
     # use a set of tuples to track uniqueness cleanly
@@ -35,14 +35,16 @@ struct ClusteredGenerator <: LocationGenerator
     cluster_std::Float64
 end
 
+struct GridGenerator <: LocationGenerator end
+
 # Common interface, dispatched on generator type
-function generate_locations(::UniformGenerator, rng, x_min, x_max, y_min, y_max, num_locations)
+function generate_locations(::UniformGenerator, rng, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
     x = rand(rng, Uniform(x_min, x_max), num_locations)
     y = rand(rng, Uniform(y_min, y_max), num_locations)
     return [x y]
 end
 
-function generate_locations(gen::ClusteredGenerator, rng, x_min, x_max, y_min, y_max, num_locations)
+function generate_locations(::ClusteredGenerator, rng, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
     center_x = rand(rng, Uniform(x_min, x_max), gen.num_clusters)
     center_y = rand(rng, Uniform(y_min, y_max), gen.num_clusters)
     assignments = rand(rng, 1:gen.num_clusters, num_locations)
@@ -53,22 +55,65 @@ function generate_locations(gen::ClusteredGenerator, rng, x_min, x_max, y_min, y
     return [x y]
 end
 
+function generate_locations(::GridGenerator, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
+    # distribute num_locations as evenly as possible on a grid
+    rows = columns = sqrt(num_locations)
+    # if its not an integer, we need to round
+    if rows % 1 != 0
+        rows = ceil(rows)
+        if columns % 1 < 0.5
+            columns = floor(columns)
+        else
+            columns = ceil(columns)
+        end
+    end
+    rows = Int64(rows)
+    columns = Int64(columns)
+    println("distributing $num_locations in a $rows by $columns grid")
+    # exclude the very edges of the map (+2 for the edges; [2:end-1] to exclude them)
+    x = LinRange(x_min, x_max, rows + 2)[2:end-1]
+    y = LinRange(y_min, y_max, columns + 2)[2:end-1]
+    grid = vec(collect(Iterators.product(x, y)))
+    return grid[1:num_locations]
+end
 
-function generate_input_data(;generator::LocationGenerator, seed, x_min, x_max, y_min, y_max, true_num_locations::Int, size_auction_pool::Int, num_bundles::Int, pred_num_locations::Int)
+struct InputData
+    true_base_locations::Matrix{Float64}
+    auction_pool_locations::Matrix{Float64}
+    bundles
+    true_carrier_bids
+    x0
+end
+
+function generate_input_data(
+    ;
+    true_location_generator::LocationGenerator,
+    auction_pool_location_generator::LocationGenerator,
+    seed,
+    x_min,
+    x_max,
+    y_min,
+    y_max,
+    true_num_locations::Int,
+    size_auction_pool::Int,
+    num_bundles::Int,
+    tsp_solver::TSPSolver,
+    pred_num_locations::Int
+    )::InputData
     rng = MersenneTwister(seed)
 
-    true_base_locations = generate_locations(generator, rng, x_min, x_max, y_min, y_max, true_num_locations)
-    auction_pool = generate_locations(UniformGenerator(), rng, x_min, x_max, y_min, y_max, size_auction_pool) 
+    true_base_locations = generate_locations(true_location_generator, rng, x_min, x_max, y_min, y_max, true_num_locations)
+    auction_pool_locations = generate_locations(auction_pool_location_generator, rng, x_min, x_max, y_min, y_max, size_auction_pool)
 
-    bundles = draw_bundles(rng=rng, num_bundles=num_bundles, auction_pool=auction_pool)
-    true_carrier_bids = compute_bids(true_base_locations, bundles)
+    bundles = draw_bundles(rng=rng, num_bundles=num_bundles, auction_pool=auction_pool_locations)
+    true_carrier_bids = compute_bids(tsp_solver, true_base_locations, bundles)
 
     x0 = rand.(rng, Uniform.(repeat([x_min, y_min], pred_num_locations), repeat([x_max, y_max], pred_num_locations)))
-    return Dict(
-        "true_base_locations"=>true_base_locations,
-        "auction_pool"=>auction_pool,
-        "bundles"=>bundles,
-        "true_carrier_bids"=>true_carrier_bids,
-        "x0"=>x0
+    return InputData(
+        true_base_locations,
+        auction_pool_locations,
+        bundles,
+        true_carrier_bids,
+        x0
     )
 end

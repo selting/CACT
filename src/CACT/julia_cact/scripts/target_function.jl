@@ -1,15 +1,17 @@
 include("metrics.jl")
 include("tsp.jl")
 
-function compute_bids(base_locations, bundles)
+function compute_bids(tsp_solver::TSPSolver, base_locations, bundles)::Vector{Float64}
     # compute tsp without bundle
-    objective_without_bundle = solve_tsp(base_locations)
+    res_without_bundle = solve_tsp(tsp_solver, base_locations)
+    objective_without_bundle = res_without_bundle.objective
     bids = []
     # TODO paralellize this!! one task per bundle
     for bundle in bundles
         # compute tsp with bundle
         tsp_locations = [base_locations; bundle]
-        objective_with_bundle = solve_tsp(tsp_locations)
+        res_with_bunbdle = solve_tsp(tsp_solver, tsp_locations)
+        objective_with_bundle = res_with_bunbdle.objective
         bid = objective_with_bundle - objective_without_bundle
         push!(bids, bid)
     end
@@ -24,17 +26,17 @@ function target_function(;
     grad::Vector,
     bundles,
     bids,
-    proxy_objective_func_symbol::Symbol,
+    tsp_solver::TSPSolver,
+    proxy_objective_function::ProxyObjectiveFunction,
     _true_base_locations::Matrix,
-    true_objective_funcs_symbols::Tuple{Vararg{Symbol}},
-    trajectory_buffer,
-    proxy_objective_buffer,
-    true_objective_buffer
+    true_objective_functions::Vector{TrueObjectiveFunction},
+    x_trajectory,
+    proxy_objective_trajectory,
+    true_objectives_trajectory
 )
-    true_obj_fns = [TRUE_OBJECTIVE_REGISTRY[obj_fn] for obj_fn in true_objective_funcs_symbols]
-    proxy_obj_fn = PROXY_OBJECTIVE_REGISTRY[proxy_objective_func_symbol]
+    # true_obj_fns = [TRUE_OBJECTIVE_REGISTRY[obj_fn] for obj_fn in true_objective_funcs_symbols]
+    # proxy_obj_fn = PROXY_OBJECTIVE_REGISTRY[proxy_objective_func_symbol]
 
-    # println("- Evaluating target function at $x")
     base_locations = reshape(x, 2, :)'  # transposed view (adjoint) with ' because Julia is column major
     # this sorting will allow function caching later
     x_cache = Tuple(sortslices(base_locations, dims=1)')  # have to re-transpose to get tuple of (x1, y1, x2, y2, ...)
@@ -42,29 +44,27 @@ function target_function(;
 
     # get the bids
     base_locations_sorted = sortslices(base_locations, dims=1)  # gives [x1 y1; x2 y2; ...]
-    bids_pred = compute_bids(base_locations_sorted, bundles)
-    # println("\tBids: $bids_pred")
+    bids_pred = compute_bids(tsp_solver, base_locations_sorted, bundles)
 
     # logging the trajectory
-    push!(trajectory_buffer, copy(base_locations_sorted))
+    push!(x_trajectory, copy(base_locations_sorted))
     # not sure if copy is necessary in Julia
 
     # loggin proxy objective
-    proxy_objective_value = proxy_obj_fn(bids_pred, bids)
-    push!(proxy_objective_buffer, proxy_objective_value)
+    proxy_objective_value = compute_proxy_objective(proxy_objective_function, bids_pred, bids)
+    push!(proxy_objective_trajectory, proxy_objective_value)
 
     # logging true objective
-    TrueObjectiveNT = eltype(true_objective_buffer)
-    # println("TrueObjecitveNT: $TrueObjectiveNT")
-    vals = Tuple(f(base_locations_sorted, _true_base_locations) for f in true_obj_fns)
-    # println("vals: $vals")
-    valsNT = TrueObjectiveNT(vals)
-    # println("valsNT: $valsNT")
-    push!(true_objective_buffer, valsNT)
-    # println("true_objective_buffer", true_objective_buffer)
-    # println("---")
+    # TrueObjectiveNT = eltype(true_objectives_trajectory)
+    # vals = Tuple(f(base_locations_sorted, _true_base_locations) for f in true_obj_fns)
+    # valsNT = TrueObjectiveNT(vals)
+    # push!(true_objectives_trajectory, valsNT)
+    for true_objective_func in true_objective_functions
+        val = compute_true_objective(true_objective_func, base_locations_sorted, _true_base_locations)
+        push!(true_objectives_trajectory[Symbol(typeof(true_objective_func))], val)
+    end
 
-    num_evals = length(true_objective_buffer)
+    num_evals = length(proxy_objective_trajectory)
     println("Probe $num_evals")
 
     return proxy_objective_value
