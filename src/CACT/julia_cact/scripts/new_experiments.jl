@@ -225,10 +225,11 @@ experiment = run_experiment(
     true_num_locations=4,
     pred_num_locations=4,
     tsp_solver=ExactJuMPSolver(),
-    optimizer=NLOPT(max_eval=8),
+    optimizer=NLOPT(max_eval=256),
     proxy_objective_function=RMSE(),
-    true_objective_functions=[HausdorffDistance(), TestDistance()]
+    true_objective_functions=TrueObjectiveFunction[HausdorffDistance()]
 )
+plot_run_result(experiment)
 # tags = ["test_tag_v0.1"]
 # meta = Dict("version" => "v0.1")
 # plot_experiment(experiment["params"], experiment["derived"], experiment["outputs"])

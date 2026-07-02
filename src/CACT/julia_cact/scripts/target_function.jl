@@ -65,7 +65,7 @@ function target_function(;
     end
 
     num_evals = length(proxy_objective_trajectory)
-    println("Probe $num_evals")
+    println("Probe $num_evals: $proxy_objective_value")
 
     return proxy_objective_value
 end
