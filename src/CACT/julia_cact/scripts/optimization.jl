@@ -66,7 +66,7 @@ function auctioneer_optimize(;
     println("===== OPTIMIZE START ===== (x-1: $x0)")
     opt_val, min_x, return_code = NLopt.optimize!(optimizer, x0)
     num_evals = NLopt.numevals(optimizer)
-    x_opt = reshape(min_x, 1, :)'  # transpose because Julia is column major
+    x_opt = reshape(min_x, 2, :)'  # transpose because Julia is column major
 
     # TODO this should ideally check for success first, using variable ret (i.e. the return code)
     OptimizeResult(
