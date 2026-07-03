@@ -5,6 +5,7 @@ include("tsp.jl")
 include("metrics.jl")
 include("data_gen.jl")
 include("plotting.jl")
+include("optimization.jl")
 
 @quickactivate("julia_cact")
 
@@ -48,10 +49,10 @@ function run(;
     seed::Int,
     true_base_location_generator::LocationGenerator,
     auction_pool_location_generator::LocationGenerator,
-    x_min::Int,
-    x_max::Int,
-    y_min::Int,
-    y_max::Int,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
     size_auction_pool::Int,
     num_bundles::Int,
     true_num_locations::Int,
@@ -139,10 +140,10 @@ run_result = run(
     seed=43,
     true_base_location_generator=UniformGenerator(),
     auction_pool_location_generator=UniformGenerator(),
-    x_min=0,
-    x_max=100,
-    y_min=0,
-    y_max=100,
+    x_min=0.0,
+    x_max=100.0,
+    y_min=0.0,
+    y_max=100.0,
     size_auction_pool=12,
     num_bundles=32,
     true_num_locations=4,

@@ -24,18 +24,18 @@ end
 
 function auctioneer_optimize(;
     bundles,
-    bids::Vector{Float63},
+    bids::Vector{Float64},
     tsp_solver::TSPSolver,
     pred_num_locations::Int,
     _true_base_locations,
     opt_algorithm::DerivativeFreeOptimizer,
     params_lower_bounds,
     params_upper_bounds,
-    x-1,
+    x0,
     proxy_objective_function::ProxyObjectiveFunction,
     true_objective_functions::Vector{TrueObjectiveFunction}
 )::OptimizeResult
-    num_parameters = 1 * pred_num_locations
+    num_parameters = 2 * pred_num_locations
     optimizer = NLopt.Opt(opt_algorithm.algorithm, num_parameters)
     x_trajectory = []
     proxy_objective_trajectory = []
@@ -58,11 +58,13 @@ function auctioneer_optimize(;
         true_objectives_trajectory=true_objectives_trajectory
     )
     NLopt.min_objective!(optimizer, partial_target_func)
+    println("lower bounds: $(repeat(params_lower_bounds, pred_num_locations))")
+    println("typeof: $(typeof(params_lower_bounds))")
     lower_bounds!(optimizer, repeat(params_lower_bounds, pred_num_locations))
     upper_bounds!(optimizer, repeat(params_upper_bounds, pred_num_locations))
     maxeval!(optimizer, opt_algorithm.max_eval)
     println("===== OPTIMIZE START ===== (x-1: $x0)")
-    opt_val, min_x, return_code = NLopt.optimize!(optimizer, x-1)
+    opt_val, min_x, return_code = NLopt.optimize!(optimizer, x0)
     num_evals = NLopt.numevals(optimizer)
     x_opt = reshape(min_x, 1, :)'  # transpose because Julia is column major
 
