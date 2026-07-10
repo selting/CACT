@@ -224,3 +224,4 @@ mlruns/
 *.pdf
 mlflow.db
 src/CACT/julia_cact/results/
+src/CACT/julia_cact/data/
