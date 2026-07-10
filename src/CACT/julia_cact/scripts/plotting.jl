@@ -2,6 +2,10 @@ using Plots
 using StatsPlots
 using DataFrames
 
+function scatter_coords(p, coords::Matrix{Real})
+    scatter(p, coords[:, 1], coords[:, 2])
+end
+
 function plot_run_result(res::RunResult)
     # plot instance and estimations
     true_base_locations = res.true_base_locations
@@ -11,19 +15,28 @@ function plot_run_result(res::RunResult)
         true_base_locations[:, 1],
         true_base_locations[:, 2],
         label="True base locations",
-        shape=:square
+        shape=:square,
+        markersize=8,
+        markerstrokecolor=:black,
+        markercolor=:black,
     )
     scatter!(
         auction_pool[:, 1],
         auction_pool[:, 2],
         label="Auction pool",
-        shape=:circle
+        shape=:circle,
+        markersize=6,
+        markerstrokecolor=:black,
+        markercolor=:white,
     )
     scatter!(
         pred_base_locations[:, 1],
         pred_base_locations[:, 2],
         label="Predicted base locations",
-        shape=:diamond
+        shape=:diamond,
+        markersize=8,
+        markerstrokecolor=:black,
+        markercolor=:gray,
     )
     xlabel!("x")
     ylabel!("y")
@@ -44,7 +57,7 @@ function plot_run_result(res::RunResult)
     p2 = scatter(
         proxy_obj,
         label=string(Symbol(res.proxy_objective_function)),
-        alpha=0.2,
+        alpha=0.5,
         color=:blue,
         markersize=3,
         # ylims=(0, nothing)
@@ -56,8 +69,20 @@ function plot_run_result(res::RunResult)
 
     # TRUE objective(s)
     for col in names(true_obj)
-        scatter!(p2, true_obj[!, col], label=col, alpha=0.5, markersize=3, color=:red)
-        plot!(p2, rolling_true_obj[!, col], label=col * "rolling min", color=:red)
+        scatter!(
+            p2,
+            true_obj[!, col],
+            label=col,
+            alpha=0.5,
+            markersize=3,
+            color=:red
+        )
+        plot!(
+            p2,
+            rolling_true_obj[!, col],
+            label=col * " following rolling min",
+            color=:red
+        )
     end
 
     xlabel!(p2, "Number of evaluations")

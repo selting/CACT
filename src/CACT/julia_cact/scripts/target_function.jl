@@ -21,6 +21,14 @@ end
 
 #TODO let's skip the function caching for now, we might add that later
 
+function x_to_coords(x)
+    return reshape(x, 2, :)' # use ' to transpose as Julia is column major
+end
+
+function coords_to_x(coords)::Vector{Float64}
+    return vcat(coords'...)
+end
+
 function target_function(;
     x::Vector,
     grad::Vector,
@@ -37,7 +45,7 @@ function target_function(;
     # true_obj_fns = [TRUE_OBJECTIVE_REGISTRY[obj_fn] for obj_fn in true_objective_funcs_symbols]
     # proxy_obj_fn = PROXY_OBJECTIVE_REGISTRY[proxy_objective_func_symbol]
 
-    base_locations = reshape(x, 2, :)'  # transposed view (adjoint) with ' because Julia is column major
+    base_locations = x_to_coords(x)
     # this sorting will allow function caching later
     x_cache = Tuple(sortslices(base_locations, dims=1)')  # have to re-transpose to get tuple of (x1, y1, x2, y2, ...)
     # if x_cache is in the cache, skip the call to compute_bids, and retrieve bids from the cache instead

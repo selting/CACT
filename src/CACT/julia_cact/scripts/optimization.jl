@@ -19,10 +19,10 @@ struct SmartSeeder <: OptimizationSeeder
     bid_threshold::Real
 end
 
-function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::UniformRandomSeeder, rng, x_min::Real, x_max::Real, y_min::Real, y_max::Real, num_locations::Int)
-    x = rand(rng, Uniform(x_min, x_max), num_locations)
-    y = rand(rng, Uniform(y_min, y_max), num_locations)
-    x0 = []
+function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::UniformRandomSeeder, rng, params_lower_bounds, params_upper_bounds, num_locations::Int)::Vector{Float64}
+    x = rand(rng, Uniform(params_lower_bounds[1], params_upper_bounds[1]), num_locations)
+    y = rand(rng, Uniform(params_lower_bounds[2], params_upper_bounds[2]), num_locations)
+    x0 = Float64[]
     for i in 1:num_locations
         push!(x0, x[i])
         push!(x0, y[i])
@@ -40,8 +40,10 @@ function bundle_centroid(bundle::Matrix{Float64})
     return mean(bundle, dims=1)
 end
 
-function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::SmartSeeder, rng, x_min::Real, x_max::Real, y_min::Real, y_max::Real, num_locations::Int)
+function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::SmartSeeder, rng, params_lower_bounds, params_upper_bounds, num_locations::Int)::Vector{Float64}
     # search dense bundles by increasing bid value and positions seed locations at those bundles' centroids. Ideally, there are many one-bundles with low bids. Second best, there are dense, small (e.g. 2-) bundles that have small bids
+    x_min, y_min = params_lower_bounds
+    x_max, y_max = params_upper_bounds
     x_epsilon = gen.diameter_threshold * (x_max - x_min)
     y_epsilon = gen.diameter_threshold * (x_max - y_min)
     diameter_threshold = mean([x_epsilon, y_epsilon])
@@ -86,15 +88,16 @@ end
 
 
 function auctioneer_optimize(;
+    rng,
     bundles,
     bids::Vector{Float64},
     tsp_solver::TSPSolver,
     pred_num_locations::Int,
     _true_base_locations,
     opt_algorithm::DerivativeFreeOptimizer,
+    x0_seeder::OptimizationSeeder,
     params_lower_bounds,
     params_upper_bounds,
-    x0,
     proxy_objective_function::ProxyObjectiveFunction,
     true_objective_functions::Vector{TrueObjectiveFunction}
 )::OptimizeResult
@@ -124,6 +127,7 @@ function auctioneer_optimize(;
     lower_bounds!(optimizer, repeat(params_lower_bounds, pred_num_locations))
     upper_bounds!(optimizer, repeat(params_upper_bounds, pred_num_locations))
     maxeval!(optimizer, opt_algorithm.max_eval)
+    x0 = generate_optimization_seed(bundles, bids, x0_seeder, rng, params_lower_bounds, params_upper_bounds, pred_num_locations)
     println("===== OPTIMIZE START ===== (x0: $x0)")
     opt_val, min_x, return_code = NLopt.optimize!(optimizer, x0)
     num_evals = NLopt.numevals(optimizer)

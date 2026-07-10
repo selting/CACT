@@ -28,9 +28,9 @@ end
 
 abstract type LocationGenerator end
 
-struct UniformGenerator <: LocationGenerator end
+struct UniformLocationGenerator <: LocationGenerator end
 
-struct ClusteredGenerator <: LocationGenerator
+struct ClusteredLocationGenerator <: LocationGenerator
     num_clusters::Int
     cluster_std::Float64
 end
@@ -38,13 +38,13 @@ end
 struct GridGenerator <: LocationGenerator end
 
 # Common interface, dispatched on generator type
-function generate_locations(::UniformGenerator, rng, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
+function generate_locations(::UniformLocationGenerator, rng, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
     x = rand(rng, Uniform(x_min, x_max), num_locations)
     y = rand(rng, Uniform(y_min, y_max), num_locations)
     return [x y]
 end
 
-function generate_locations(::ClusteredGenerator, rng, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
+function generate_locations(gen::ClusteredLocationGenerator, rng, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
     center_x = rand(rng, Uniform(x_min, x_max), gen.num_clusters)
     center_y = rand(rng, Uniform(y_min, y_max), gen.num_clusters)
     assignments = rand(rng, 1:gen.num_clusters, num_locations)
@@ -82,14 +82,13 @@ struct InputData
     auction_pool_locations::Matrix{Float64}
     bundles
     true_carrier_bids
-    x0
+    # x0
 end
 
-function generate_input_data(
-    ;
+function generate_input_data(;
     true_location_generator::LocationGenerator,
     auction_pool_location_generator::LocationGenerator,
-    seed,
+    rng,
     x_min,
     x_max,
     y_min,
@@ -100,20 +99,18 @@ function generate_input_data(
     tsp_solver::TSPSolver,
     pred_num_locations::Int
     )::InputData
-    rng = MersenneTwister(seed)
-
     true_base_locations = generate_locations(true_location_generator, rng, x_min, x_max, y_min, y_max, true_num_locations)
     auction_pool_locations = generate_locations(auction_pool_location_generator, rng, x_min, x_max, y_min, y_max, size_auction_pool)
 
     bundles = draw_bundles(rng=rng, num_bundles=num_bundles, auction_pool=auction_pool_locations)
     true_carrier_bids = compute_bids(tsp_solver, true_base_locations, bundles)
 
-    x0 = rand.(rng, Uniform.(repeat([x_min, y_min], pred_num_locations), repeat([x_max, y_max], pred_num_locations)))
+    # x0 = rand.(rng, Uniform.(repeat([x_min, y_min], pred_num_locations), repeat([x_max, y_max], pred_num_locations)))
     return InputData(
         true_base_locations,
         auction_pool_locations,
         bundles,
         true_carrier_bids,
-        x0
+        # x0
     )
 end
