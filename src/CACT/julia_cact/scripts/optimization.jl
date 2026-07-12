@@ -99,7 +99,7 @@ function auctioneer_optimize(;
     params_lower_bounds,
     params_upper_bounds,
     proxy_objective_function::ProxyObjectiveFunction,
-    true_objective_functions::Vector{TrueObjectiveFunction}
+    true_objective_functions::Tuple{TrueObjectiveFunction}
 )::OptimizeResult
     num_parameters = 2 * pred_num_locations
     optimizer = NLopt.Opt(opt_algorithm.algorithm, num_parameters)

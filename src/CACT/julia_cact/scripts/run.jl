@@ -1,12 +1,11 @@
 using JLD2
-using DrWatson
 using UUIDs
 include("tsp.jl")
 include("metrics.jl")
 include("data_gen.jl")
 include("optimization.jl")
+include("config.jl")
 
-@quickactivate("julia_cact")
 
 @kwdef struct RunResult
     # --- hyperparameters (the "what did we configure") ---
@@ -22,8 +21,9 @@ include("optimization.jl")
     pred_num_locations::Int
     tsp_solver::TSPSolver
     optimizer::DerivativeFreeOptimizer
+    x0_seeder::OptimizationSeeder
     proxy_objective_function::ProxyObjectiveFunction
-    true_objective_functions::Vector{TrueObjectiveFunction}
+    true_objective_functions::Tuple{TrueObjectiveFunction}
 
     # --- derived data (depends on seed/hyperparams, expensive to recompute) ---
     true_base_locations
@@ -39,7 +39,7 @@ include("optimization.jl")
     timestamp
     # git_commit::String          # reproducibility — what code produced this
     # runtime_seconds::Float64
-    tags::Vector{String}        # e.g. ["baseline", "debug", "paper-fig3"]
+    tags::Tuple{String}        # e.g. ["baseline", "debug", "paper-fig3"]
 end
 
 
@@ -59,47 +59,31 @@ end
 #     return run_id
 # end
 
-function save_run(res::RunResult)
-    runs_dir = datadir("exp_raw")
-    name = res.run_id
-    path = joinpath(runs_dir, "$name.jld2")
-    jldsave(path; res)
-end
+# function save_run(res::RunResult)
+#     runs_dir = datadir("exp_raw")
+#     name = res.run_id
+#     path = joinpath(runs_dir, "$name.jld2")
+#     jldsave(path; res)
+# end
 
 
-function run(;
-    seed::Int,
-    true_base_location_generator::LocationGenerator,
-    auction_pool_location_generator::LocationGenerator,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64,
-    size_auction_pool::Int,
-    num_bundles::Int,
-    true_num_locations::Int,
-    pred_num_locations::Int,
-    tsp_solver::TSPSolver,
-    optimizer::DerivativeFreeOptimizer,
-    x0_seeder::OptimizationSeeder,
-    proxy_objective_function::ProxyObjectiveFunction,
-    true_objective_functions::Vector{TrueObjectiveFunction},
-)
-    rng = Xoshiro(seed)
+function run(config::CactConfig)
+
+    rng = Xoshiro(config.seed)
 
     derived = generate_input_data(;
         rng=rng,
-        true_location_generator=true_base_location_generator,
-        auction_pool_location_generator=auction_pool_location_generator,
-        x_min=x_min,
-        x_max=x_max,
-        y_min=y_min,
-        y_max=y_max,
-        true_num_locations=true_num_locations,
-        size_auction_pool=size_auction_pool,
-        num_bundles=num_bundles,
-        tsp_solver=tsp_solver,
-        pred_num_locations=pred_num_locations
+        true_location_generator=config.true_base_location_generator,
+        auction_pool_location_generator=config.auction_pool_location_generator,
+        x_min=config.x_min,
+        x_max=config.x_max,
+        y_min=config.y_min,
+        y_max=config.y_max,
+        true_num_locations=config.true_num_locations,
+        size_auction_pool=config.size_auction_pool,
+        num_bundles=config.num_bundles,
+        tsp_solver=config.tsp_solver,
+        pred_num_locations=config.pred_num_locations
     )
     optimize_result = auctioneer_optimize(
         rng=rng,
@@ -129,6 +113,7 @@ function run(;
         pred_num_locations,
         tsp_solver,
         optimizer,
+        x0_seeder,
         proxy_objective_function,
         true_objective_functions,
         derived.true_base_locations,
@@ -138,43 +123,9 @@ function run(;
         optimize_result,
         uuid4(),
         time(),
-        ["tag1", "tag2"]
+        tags,
     )
 
-    save_run(res)
+    # save_run(res)
     return res
 end
-
-###################################################################
-# RUNNING AN EXPERIMENT
-###################################################################
-for seed in 1:5
-    run_result = run(
-        seed=seed,
-        true_base_location_generator=ClusteredLocationGenerator(3, 3.0),
-        auction_pool_location_generator=UniformLocationGenerator(),
-        x_min=0.0,
-        x_max=100.0,
-        y_min=0.0,
-        y_max=100.0,
-        size_auction_pool=12,
-        num_bundles=32,
-        true_num_locations=4,
-        pred_num_locations=4,
-        tsp_solver=ExactJuMPSolver(),
-        optimizer=NLOPT(max_eval=10),
-        x0_seeder=UniformRandomSeeder(),
-        proxy_objective_function=RMSE(),
-        true_objective_functions=TrueObjectiveFunction[HausdorffDistance()]
-    )
-end
-#=
-=#
-
-include("plotting.jl")
-plot_run_result(run_result)
-
-# tags = ["test_tag_v0.1"]
-# meta = Dict("version" => "v0.1")
-# plot_experiment(experiment["params"], experiment["derived"], experiment["outputs"])
-# save_run(experiment["params"], experiment["derived"], experiment["outputs"]; tags=tags, meta=meta)

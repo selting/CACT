@@ -15,6 +15,7 @@ function flatten_for_index(r::RunResult)
 
         tsp_solver=string(typeof(r.tsp_solver)),
         optimizer=string(typeof(r.optimizer)),
+        x0_seeder=string(typeof(r.x0_seeder)),
         proxy_objective_function=string(typeof(r.proxy_objective_function)),
         true_objective_functions=join([string(typeof(f)) for f in r.true_objective_functions], ", "),
 
@@ -33,7 +34,7 @@ function build_index(; dir=datadir("exp_raw"))
     files = filter(f -> endswith(f, ".jld2"), readdir(dir; join=true))
     rows = [flatten_for_index(JLD2.load(f, "res")) for f in files]
     df = DataFrame(rows)
-    Arrow.write(joinpath(dir, "..", "index.arrow"), df)
+    Arrow.write(joinpath(dir, "..", "index_exp_raw.arrow"), df)
     return df
 end
 

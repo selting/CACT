@@ -37,7 +37,7 @@ function target_function(;
     tsp_solver::TSPSolver,
     proxy_objective_function::ProxyObjectiveFunction,
     _true_base_locations::Matrix,
-    true_objective_functions::Vector{TrueObjectiveFunction},
+    true_objective_functions::Tuple{TrueObjectiveFunction},
     x_trajectory,
     proxy_objective_trajectory,
     true_objectives_trajectory

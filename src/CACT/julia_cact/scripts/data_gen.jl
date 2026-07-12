@@ -82,7 +82,6 @@ struct InputData
     auction_pool_locations::Matrix{Float64}
     bundles
     true_carrier_bids
-    # x0
 end
 
 function generate_input_data(;
@@ -105,12 +104,10 @@ function generate_input_data(;
     bundles = draw_bundles(rng=rng, num_bundles=num_bundles, auction_pool=auction_pool_locations)
     true_carrier_bids = compute_bids(tsp_solver, true_base_locations, bundles)
 
-    # x0 = rand.(rng, Uniform.(repeat([x_min, y_min], pred_num_locations), repeat([x_max, y_max], pred_num_locations)))
     return InputData(
         true_base_locations,
         auction_pool_locations,
         bundles,
         true_carrier_bids,
-        # x0
     )
 end
