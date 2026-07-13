@@ -2,8 +2,8 @@ using DrWatson
 @quickactivate("julia_cact")
 using Revise
 
-include(scriptsdir("run.jl"))
 include(scriptsdir("structs.jl"))
+include(scriptsdir("run.jl"))
 
 # using the DrWatson dictlist approacha: everything in a Vector is expanded once (Vectors of length 1 are not expanded naturally). 
 allparams = Dict(
@@ -40,5 +40,5 @@ end
 path = datadir("exp_raw")
 for (i, config_dict) in enumerate(dicts)
     config = CactConfig(; dict2ntuple(config_dict)...)
-    data, file = produce_or_load(manage_run, config_dict, path; filename=hash, prefix="cact")
+    data, file = produce_or_load(manage_run, config, path; filename=hash, prefix="cact")
 end

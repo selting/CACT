@@ -31,8 +31,11 @@ using AlgebraOfGraphics
 # ╔═╡ 0eca95d0-a595-4dc3-92c7-1c4f360297ef
 using PlutoUI        # if Pluto
 
+# ╔═╡ 8e686388-d366-46a5-938c-161d841875c2
+using Distances
+
 # ╔═╡ 18a5d8a9-1d90-418e-bdb2-2ef21a49d492
-include("run.jl")
+Core.eval(Main, :(include("structs.jl")))
 
 # ╔═╡ fa060b99-a8bf-4d22-9b0f-c32301f68c42
 datadir = "/home/steffen/Code/CACT/src/CACT/julia_cact/data/exp_raw"
@@ -62,6 +65,7 @@ AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
@@ -73,6 +77,7 @@ AlgebraOfGraphics = "~0.13.0"
 Arrow = "~2.8.1"
 CairoMakie = "~0.15.13"
 DataFrames = "~1.8.2"
+Distances = "~0.10.12"
 DrWatson = "~2.19.1"
 JLD2 = "~0.6.4"
 PlutoUI = "~0.7.83"
@@ -84,7 +89,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.11"
 manifest_format = "2.0"
-project_hash = "67d7a72ca859649087f2d6c2db36ce38975f0c98"
+project_hash = "e77cb40063cd20698cd61d07e651d936c3ba08b4"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1990,6 +1995,7 @@ version = "4.1.0+0"
 # ╠═45785c9a-f99a-4d20-99bf-bba87806ea5f
 # ╠═f04c44cd-6094-4eb0-92ba-348ec2e3f71e
 # ╠═0eca95d0-a595-4dc3-92c7-1c4f360297ef
+# ╠═8e686388-d366-46a5-938c-161d841875c2
 # ╠═18a5d8a9-1d90-418e-bdb2-2ef21a49d492
 # ╠═fa060b99-a8bf-4d22-9b0f-c32301f68c42
 # ╠═14a2b728-cae2-4bed-a946-62976ba15b32

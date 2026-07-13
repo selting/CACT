@@ -1,3 +1,5 @@
+include("metrics.jl")
+
 # ========================================================
 
 abstract type LocationGenerator end
@@ -12,6 +14,30 @@ end
 Base.string(g::ClusteredLocationGenerator) = "ClusteredLocationGenerator(#$g.num_clusters, std$g.cluster_std)"
 
 struct GridGenerator <: LocationGenerator end
+
+# ========================================================
+
+abstract type TSPSolver end
+
+@kwdef struct ExactJuMPSolver <: TSPSolver
+    optimizer=HiGHS.Optimizer  # e.g. HiGHS.Optimizer
+    time_limit=Inf
+    mip_rel_gap=1e-4
+end
+
+struct NearestNeighborSolver <: TSPSolver end
+
+@kwdef struct TwoOptSolver <: TSPSolver
+    num_restarts::Int
+    max_iterations::Int
+end
+
+struct TSPResult
+    objective::Float64
+    tour::Union{Vector{Int},Nothing}  # Nothing if you don't bother reconstructing it
+    solve_time::Float64
+    optimal
+end
 
 # ========================================================
 
