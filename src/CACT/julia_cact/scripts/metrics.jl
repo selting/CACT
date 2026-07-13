@@ -3,6 +3,7 @@ using Distances
 abstract type TrueObjectiveFunction end
 
 struct HausdorffDistance <: TrueObjectiveFunction end
+Base.string(::HausdorffDistance) = "HausdorffDistance"
 struct TestDistance <: TrueObjectiveFunction end
 
 function compute_true_objective(f::HausdorffDistance, set_a, set_b)
@@ -28,11 +29,14 @@ end
 abstract type ProxyObjectiveFunction end
 
 struct RMSE <: ProxyObjectiveFunction end
+Base.string(::RMSE) = "RMSE"
 struct MSE <: ProxyObjectiveFunction end
+Base.string(::MSE) = "MSE"
 
 struct HuberLoss <: ProxyObjectiveFunction
     delta::Float64
 end
+Base.string(l::HuberLoss) = "Huberloss($l.delta)"
 
 compute_proxy_objective(::RMSE, y_pred, y) = sqrt(mean((y_pred .- y) .^ 2))
 compute_proxy_objective(::MSE, y_pred, y) = mean((y_pred .- y) .^ 2)

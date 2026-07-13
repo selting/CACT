@@ -4,59 +4,56 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 7b912414-73c2-11f1-2ade-7381a1db5010
-begin
-	using JLD2
-	using UUIDs
-	using DrWatson
-	
-	using DataFrames
-	using Arrow
-	using Statistics
-	
-	using CairoMakie
-	using AlgebraOfGraphics
-	
-	using PlutoUI        # if Pluto
-end
+# ╔═╡ be3d19ab-7be5-4dee-be5b-0cb41169e771
+using DrWatson
 
-# ╔═╡ b4d0181f-b6e4-4b36-b302-e996222b71be
-begin
-    solarized = Theme(
-        backgroundcolor = RGBf(0.992,0.965,0.890),
-        Axis = (
-            backgroundcolor = RGBf(0.992,0.965,0.890),
-            xgridcolor = RGBf(0.80,0.75,0.65),
-            ygridcolor = RGBf(0.80,0.75,0.65),
-            leftspinecolor = :black,
-            bottomspinecolor = :black
-        ),
-        palette = (
-            color = [
-                RGBf(0.149,0.545,0.824),   # blue
-                RGBf(0.165,0.631,0.596),   # cyan
-                RGBf(0.522,0.600,0.000),   # green
-                RGBf(0.710,0.537,0.000),   # yellow
-                RGBf(0.863,0.196,0.184),   # red
-                RGBf(0.827,0.212,0.510),   # magenta
-            ]
-        )
-    )
-    
-    set_theme!(solarized)
-end
+# ╔═╡ 188aee60-4e2b-4150-8adb-839ac2f324ca
+using JLD2
+
+# ╔═╡ 78e0615f-def8-4eb5-a319-b446d0768609
+using UUIDs
+
+# ╔═╡ 0257d792-8e4a-4963-9a85-be981ec1ef0b
+using DataFrames
+
+# ╔═╡ 90d67245-4d7b-4eaf-bc89-e1bebaca2e15
+using Arrow
+
+# ╔═╡ d8a1e9f5-d3ca-4cc5-a8aa-ada8190f0238
+using Statistics
+
+# ╔═╡ 45785c9a-f99a-4d20-99bf-bba87806ea5f
+using CairoMakie
+
+# ╔═╡ f04c44cd-6094-4eb0-92ba-348ec2e3f71e
+using AlgebraOfGraphics
+
+# ╔═╡ 0eca95d0-a595-4dc3-92c7-1c4f360297ef
+using PlutoUI        # if Pluto
+
+# ╔═╡ 18a5d8a9-1d90-418e-bdb2-2ef21a49d492
+include("run.jl")
 
 # ╔═╡ fa060b99-a8bf-4d22-9b0f-c32301f68c42
-datadir()
+datadir = "/home/steffen/Code/CACT/src/CACT/julia_cact/data/exp_raw"
 
-# ╔═╡ 40ca31d0-1f50-4201-a7f6-1ad9cad29ded
-exp_index = DataFrame(Arrow.Table(joinpath(datadir(), "index_exp_raw.arrow")))
+# ╔═╡ 14a2b728-cae2-4bed-a946-62976ba15b32
+df = collect_results(datadir)
 
-# ╔═╡ 5535dc18-25fb-4bf4-a457-0b8edc6067f1
-names(exp_index)
+# ╔═╡ 41f1e93b-282b-43a8-8504-0bd6b3084d33
+filename = readdir(datadir)[1]
 
-# ╔═╡ b1561208-24ee-4e8a-ae61-43f3e2e21e82
-exp_index.tags
+# ╔═╡ de7b9f52-bb40-4679-997f-7465e777d0bf
+file = load(joinpath(datadir, filename))
+
+# ╔═╡ 5a9a3773-dbfa-4433-bd6d-b9056bea6fac
+foo = Dict("a" => 1, "b"=> Dict("a2" => 99))
+
+# ╔═╡ 97f71849-7811-4243-a55c-f8ebe021aaa1
+wsave(joinpath(datadir, "foo.jld2"), foo)
+
+# ╔═╡ b97aa6c8-1030-425e-ae2c-9a31f0edb34a
+wload(joinpath(datadir, "foo.jld2"))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1984,11 +1981,22 @@ version = "4.1.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═7b912414-73c2-11f1-2ade-7381a1db5010
-# ╟─b4d0181f-b6e4-4b36-b302-e996222b71be
+# ╠═188aee60-4e2b-4150-8adb-839ac2f324ca
+# ╠═78e0615f-def8-4eb5-a319-b446d0768609
+# ╠═be3d19ab-7be5-4dee-be5b-0cb41169e771
+# ╠═0257d792-8e4a-4963-9a85-be981ec1ef0b
+# ╠═90d67245-4d7b-4eaf-bc89-e1bebaca2e15
+# ╠═d8a1e9f5-d3ca-4cc5-a8aa-ada8190f0238
+# ╠═45785c9a-f99a-4d20-99bf-bba87806ea5f
+# ╠═f04c44cd-6094-4eb0-92ba-348ec2e3f71e
+# ╠═0eca95d0-a595-4dc3-92c7-1c4f360297ef
+# ╠═18a5d8a9-1d90-418e-bdb2-2ef21a49d492
 # ╠═fa060b99-a8bf-4d22-9b0f-c32301f68c42
-# ╠═40ca31d0-1f50-4201-a7f6-1ad9cad29ded
-# ╠═5535dc18-25fb-4bf4-a457-0b8edc6067f1
-# ╠═b1561208-24ee-4e8a-ae61-43f3e2e21e82
+# ╠═14a2b728-cae2-4bed-a946-62976ba15b32
+# ╠═41f1e93b-282b-43a8-8504-0bd6b3084d33
+# ╠═de7b9f52-bb40-4679-997f-7465e777d0bf
+# ╠═5a9a3773-dbfa-4433-bd6d-b9056bea6fac
+# ╠═97f71849-7811-4243-a55c-f8ebe021aaa1
+# ╠═b97aa6c8-1030-425e-ae2c-9a31f0edb34a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

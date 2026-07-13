@@ -1,23 +1,6 @@
 using NLopt
 
 
-abstract type DerivativeFreeOptimizer end
-
-@kwdef struct NLOPT <: DerivativeFreeOptimizer
-    algorithm::Symbol = :GN_DIRECT_L_RAND
-    max_eval::Int = 256
-    # max_time::Float64 = Inf
-    # abs_tol::Float64 = 1e-8
-    # ...
-end
-
-abstract type OptimizationSeeder end
-
-struct UniformRandomSeeder <: OptimizationSeeder end
-struct SmartSeeder <: OptimizationSeeder
-    diameter_threshold::Float64
-    bid_threshold::Real
-end
 
 function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::UniformRandomSeeder, rng, params_lower_bounds, params_upper_bounds, num_locations::Int)::Vector{Float64}
     x = rand(rng, Uniform(params_lower_bounds[1], params_upper_bounds[1]), num_locations)
@@ -76,15 +59,6 @@ function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::SmartSe
 end
 
 
-struct OptimizeResult
-    x_opt
-    opt_val::Float64
-    num_evals::Int
-    return_code
-    x_trajectory
-    proxy_objective_trajectory
-    true_objectives_trajectory
-end
 
 
 function auctioneer_optimize(;

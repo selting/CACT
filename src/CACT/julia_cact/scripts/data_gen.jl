@@ -26,16 +26,6 @@ function draw_bundles(; rng, num_bundles::Int, auction_pool::Matrix)
     return bundles
 end
 
-abstract type LocationGenerator end
-
-struct UniformLocationGenerator <: LocationGenerator end
-
-struct ClusteredLocationGenerator <: LocationGenerator
-    num_clusters::Int
-    cluster_std::Float64
-end
-
-struct GridGenerator <: LocationGenerator end
 
 # Common interface, dispatched on generator type
 function generate_locations(::UniformLocationGenerator, rng, x_min, x_max, y_min, y_max, num_locations)::Matrix{Float64}
@@ -77,12 +67,6 @@ function generate_locations(::GridGenerator, x_min, x_max, y_min, y_max, num_loc
     return grid[1:num_locations]
 end
 
-struct InputData
-    true_base_locations::Matrix{Float64}
-    auction_pool_locations::Matrix{Float64}
-    bundles
-    true_carrier_bids
-end
 
 function generate_input_data(;
     true_location_generator::LocationGenerator,
