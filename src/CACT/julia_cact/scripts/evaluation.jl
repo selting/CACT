@@ -34,29 +34,36 @@ using PlutoUI        # if Pluto
 # ╔═╡ 8e686388-d366-46a5-938c-161d841875c2
 using Distances
 
+# ╔═╡ 3b343b4d-505f-4ac4-99c9-d33ea5ff5f58
+using Makie
+
 # ╔═╡ 18a5d8a9-1d90-418e-bdb2-2ef21a49d492
-Core.eval(Main, :(include("structs.jl")))
+# Core.eval(Main, :(include("structs.jl")))
+Core.eval(Main, :(include("structs_plotting.jl")))
 
 # ╔═╡ fa060b99-a8bf-4d22-9b0f-c32301f68c42
 datadir = "/home/steffen/Code/CACT/src/CACT/julia_cact/data/exp_raw"
 
 # ╔═╡ 14a2b728-cae2-4bed-a946-62976ba15b32
-df = collect_results(datadir)
+df = collect_results(
+	datadir,
+	black_list=["optimize_result", "input_data"],
+					)
 
 # ╔═╡ 41f1e93b-282b-43a8-8504-0bd6b3084d33
-filename = readdir(datadir)[1]
+filename = readdir(datadir)[16]
 
 # ╔═╡ de7b9f52-bb40-4679-997f-7465e777d0bf
 file = load(joinpath(datadir, filename))
 
-# ╔═╡ 5a9a3773-dbfa-4433-bd6d-b9056bea6fac
-foo = Dict("a" => 1, "b"=> Dict("a2" => 99))
-
-# ╔═╡ 97f71849-7811-4243-a55c-f8ebe021aaa1
-wsave(joinpath(datadir, "foo.jld2"), foo)
-
 # ╔═╡ b97aa6c8-1030-425e-ae2c-9a31f0edb34a
-wload(joinpath(datadir, "foo.jld2"))
+res = file["optimize_result"]
+
+# ╔═╡ 8c2c7845-ec4b-4b44-8701-4b6c1d712ee5
+res
+
+# ╔═╡ 0ecaecb4-8271-419a-91df-dd601e7c5cd0
+Main.plot_optimize_result(res)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -68,6 +75,7 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
@@ -80,6 +88,7 @@ DataFrames = "~1.8.2"
 Distances = "~0.10.12"
 DrWatson = "~2.19.1"
 JLD2 = "~0.6.4"
+Makie = "~0.24.13"
 PlutoUI = "~0.7.83"
 """
 
@@ -89,7 +98,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.11"
 manifest_format = "2.0"
-project_hash = "e77cb40063cd20698cd61d07e651d936c3ba08b4"
+project_hash = "f4bdc0fbb5a3c10b8bcb720ff686d066f3473e89"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1996,13 +2005,14 @@ version = "4.1.0+0"
 # ╠═f04c44cd-6094-4eb0-92ba-348ec2e3f71e
 # ╠═0eca95d0-a595-4dc3-92c7-1c4f360297ef
 # ╠═8e686388-d366-46a5-938c-161d841875c2
+# ╠═3b343b4d-505f-4ac4-99c9-d33ea5ff5f58
 # ╠═18a5d8a9-1d90-418e-bdb2-2ef21a49d492
 # ╠═fa060b99-a8bf-4d22-9b0f-c32301f68c42
 # ╠═14a2b728-cae2-4bed-a946-62976ba15b32
 # ╠═41f1e93b-282b-43a8-8504-0bd6b3084d33
 # ╠═de7b9f52-bb40-4679-997f-7465e777d0bf
-# ╠═5a9a3773-dbfa-4433-bd6d-b9056bea6fac
-# ╠═97f71849-7811-4243-a55c-f8ebe021aaa1
 # ╠═b97aa6c8-1030-425e-ae2c-9a31f0edb34a
+# ╠═8c2c7845-ec4b-4b44-8701-4b6c1d712ee5
+# ╠═0ecaecb4-8271-419a-91df-dd601e7c5cd0
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

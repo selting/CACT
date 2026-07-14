@@ -102,7 +102,7 @@ struct OptimizeResult
     return_code
     x_trajectory
     proxy_objective_trajectory::Vector{Float64}
-    true_objectives_trajectory::Dict{String, Vector{Float64}}
+    true_objectives_trajectory::Dict{Symbol, Vector{Float64}}
 end
 
 @kwdef struct RunResult
