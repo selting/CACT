@@ -61,14 +61,14 @@ end
 
 
 
-function auctioneer_optimize(;
+function auctioneer_optimize(
+    opt_algorithm::NLOPT;
     rng,
     bundles,
     bids::Vector{Float64},
     tsp_solver::TSPSolver,
     pred_num_locations::Int,
     _true_base_locations,
-    opt_algorithm::DerivativeFreeOptimizer,
     x0_seeder::OptimizationSeeder,
     params_lower_bounds,
     params_upper_bounds,
@@ -79,8 +79,6 @@ function auctioneer_optimize(;
     optimizer = NLopt.Opt(opt_algorithm.algorithm, num_parameters)
     x_trajectory = []
     proxy_objective_trajectory = []
-    # TrueObjectiveNT = NamedTuple{true_objective_functions}
-    # true_objectives_trajectory = TrueObjectiveNT[]
     true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
 
     # create the closure of the target_function that NLopt can handle
@@ -109,6 +107,56 @@ function auctioneer_optimize(;
     x_opt = x_to_coords(min_x)
 
     # TODO this should ideally check for success first, using variable ret (i.e. the return code)
+    OptimizeResult(
+        x_opt,
+        opt_val,
+        num_evals,
+        return_code,
+        x_trajectory,
+        proxy_objective_trajectory,
+        true_objectives_trajectory,
+    )
+end
+
+function auctioneer_optimize(
+    opt_algorithm::NoOpt;
+    rng,
+    bundles,
+    bids::Vector{Float64},
+    tsp_solver::TSPSolver,
+    pred_num_locations::Int,
+    _true_base_locations,
+    x0_seeder::OptimizationSeeder,
+    params_lower_bounds,
+    params_upper_bounds,
+    proxy_objective_function::ProxyObjectiveFunction,
+    true_objective_functions::Tuple{TrueObjectiveFunction}
+)::OptimizeResult
+    num_parameters = 2 * pred_num_locations
+    x_trajectory = []
+    proxy_objective_trajectory = []
+    true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
+
+    # create the closure of the target_function that NLopt can handle
+    partial_target_func = (x, grad) -> target_function(
+        x=x,
+        grad=grad,
+        bundles=bundles,
+        bids=bids,
+        tsp_solver=tsp_solver,
+        proxy_objective_function=proxy_objective_function,
+        _true_base_locations=_true_base_locations,
+        true_objective_functions=true_objective_functions,
+        x_trajectory=x_trajectory,
+        proxy_objective_trajectory=proxy_objective_trajectory,
+        true_objectives_trajectory=true_objectives_trajectory
+    )
+
+    x_opt = rand(Uniform(0, 100), num_parameters)  # TODO make upper/lower bound variable!!
+    opt_val = partial_target_func(x_opt, [])
+    num_evals = 1
+    return_code = 1
+
     OptimizeResult(
         x_opt,
         opt_val,

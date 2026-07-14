@@ -52,13 +52,13 @@ function run(config::CactConfig)
         pred_num_locations=config.pred_num_locations
     )
     optimize_result = auctioneer_optimize(
+        config.optimizer,
         rng=rng,
         bundles=input_data.bundles,
         bids=input_data.true_carrier_bids,
         tsp_solver=config.tsp_solver,
         pred_num_locations=config.pred_num_locations,
         _true_base_locations=input_data.true_base_locations,
-        opt_algorithm=config.optimizer,
         x0_seeder=config.x0_seeder,
         params_lower_bounds=[config.x_min, config.y_min],  # TODO avoid the back and forth from x_min, x_max, y_min, y_max to vectors of min and max values. I guess its best to stick to xmin, xmax where possible
         params_upper_bounds=[config.x_max, config.y_max],

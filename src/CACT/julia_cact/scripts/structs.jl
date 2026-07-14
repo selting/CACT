@@ -51,6 +51,9 @@ abstract type DerivativeFreeOptimizer end
     # ...
 end
 
+# Benchmark: Simply choose ONE single random estimation for x without optimizing at all
+struct NoOpt <: DerivativeFreeOptimizer end
+
 # ========================================================
 
 abstract type OptimizationSeeder end
@@ -89,7 +92,7 @@ struct InputData
     true_base_locations::Matrix{Float64}
     auction_pool_locations::Matrix{Float64}
     bundles
-    true_carrier_bids
+    true_carrier_bids::Vector{Float64}
 end
 
 struct OptimizeResult
@@ -98,8 +101,8 @@ struct OptimizeResult
     num_evals::Int
     return_code
     x_trajectory
-    proxy_objective_trajectory
-    true_objectives_trajectory
+    proxy_objective_trajectory::Vector{Float64}
+    true_objectives_trajectory::Dict{String, Vector{Float64}}
 end
 
 @kwdef struct RunResult
