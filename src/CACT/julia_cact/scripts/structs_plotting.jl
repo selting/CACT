@@ -1,6 +1,8 @@
 using Makie
 include("structs.jl")
 
+
+
 function plot_optimize_result(r::OptimizeResult)
     n = r.num_evals
     iterations = 1:n
@@ -49,6 +51,74 @@ function plot_optimize_result(r::OptimizeResult)
         color = :red, linewidth = 2, label = "Incumbent (true)")
 
     axislegend(ax, position = :rt)
+
+    return fig
+end
+
+
+using Makie
+
+function plot_aggregated_result(agg::AggregatedOptimizeResult)
+    n_evals = length(agg.incumbent_proxy_objective.mean)
+    iterations = 1:n_evals
+    keys_list = sort(collect(keys(agg.incumbent_true_objectives_trajectory)); by=string)
+
+    fig = Figure()
+
+    # --- left axis: proxy objective ---
+    ax_proxy = Axis(fig[1, 1],
+        xlabel = "Iteration",
+        ylabel = "Proxy objective value",
+        title  = "Incumbent trajectories (mean ± std, n=$(agg.n))",
+        ylabelcolor = :blue,
+        yticklabelcolor = :blue,
+    )
+
+    # --- right axis: true objective, sharing the same x-range ---
+    ax_true = Axis(fig[1, 1],
+        ylabel = "True objective value",
+        yaxisposition = :right,
+        ylabelcolor = :orange,
+        yticklabelcolor = :orange,
+        limits = (nothing, nothing, 0, nothing)
+    )
+    hidespines!(ax_true)
+    hidexdecorations!(ax_true)
+    linkxaxes!(ax_proxy, ax_true)
+
+    menu = Menu(fig[0, 1], options = [string(k) => k for k in keys_list])
+
+    selected_key = Observable(keys_list[1])
+    on(menu.selection) do sel
+        selected_key[] = sel
+    end
+
+    # --- incumbent proxy: static band + mean line, on left axis ---
+    proxy = agg.incumbent_proxy_objective
+    proxy_lower = proxy.mean .- proxy.std
+    proxy_upper = proxy.mean .+ proxy.std
+
+    band!(ax_proxy, iterations, proxy_lower, proxy_upper;
+        color = (:blue, 0.2), label = "Incumbent proxy ± std")
+    lines!(ax_proxy, iterations, proxy.mean;
+        color = :blue, linewidth = 2, label = "Incumbent proxy mean")
+
+    # --- incumbent true objective: reactive band + mean line, on right axis ---
+    true_summary = @lift agg.incumbent_true_objectives_trajectory[$selected_key]
+
+    true_lower = @lift $true_summary.mean .- $true_summary.std
+    true_upper = @lift $true_summary.mean .+ $true_summary.std
+    true_mean  = @lift $true_summary.mean
+
+    band!(ax_true, iterations, true_lower, true_upper;
+        color = (:orange, 0.2), label = "Incumbent true ± std")
+    lines!(ax_true, iterations, true_mean;
+        color = :orange, linewidth = 2, label = "Incumbent true mean")
+
+    # --- combined legend, pulling entries from both axes ---
+    axislegend(ax_proxy, [ax_proxy.scene.plots; ax_true.scene.plots],
+        ["Incumbent proxy ± std", "Incumbent proxy mean", "Incumbent true ± std", "Incumbent true mean"],
+        position = :rt)
 
     return fig
 end

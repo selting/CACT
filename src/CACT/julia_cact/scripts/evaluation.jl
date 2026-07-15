@@ -41,29 +41,35 @@ using Makie
 # Core.eval(Main, :(include("structs.jl")))
 Core.eval(Main, :(include("structs_plotting.jl")))
 
+# ╔═╡ 6435838d-0e7e-448e-a51d-1695e49ddeb7
+
+
 # ╔═╡ fa060b99-a8bf-4d22-9b0f-c32301f68c42
 datadir = "/home/steffen/Code/CACT/src/CACT/julia_cact/data/exp_raw"
 
 # ╔═╡ 14a2b728-cae2-4bed-a946-62976ba15b32
-df = collect_results(
-	datadir,
-	black_list=["optimize_result", "input_data"],
-					)
+df = collect_results(datadir,black_list=["input_data"])
 
-# ╔═╡ 41f1e93b-282b-43a8-8504-0bd6b3084d33
-filename = readdir(datadir)[16]
+# ╔═╡ ac4adffe-c8b8-457c-b42b-ebd0bf58dc81
+grouped_results = combine(groupby(df, [:optimizer, :x0_seeder])) do sdf
+    (aggregated = Main.aggregate_results(sdf.optimize_result),)
+end
 
-# ╔═╡ de7b9f52-bb40-4679-997f-7465e777d0bf
-file = load(joinpath(datadir, filename))
+# ╔═╡ 4b76946f-dfd6-4780-baf2-a513bf358015
+grouped_results[(optimizer=Main.NoOpt())]
 
-# ╔═╡ b97aa6c8-1030-425e-ae2c-9a31f0edb34a
-res = file["optimize_result"]
+# ╔═╡ ba942fd1-c22b-4982-aa7b-488d3590eb97
+# plot DIRECT L=64
+fig = Main.plot_aggregated_result(grouped_results[(:optimizer=NLOPT(:GN_DIRECT_L_RAND, 64)), :aggregated]);
 
-# ╔═╡ 8c2c7845-ec4b-4b44-8701-4b6c1d712ee5
-res
+# ╔═╡ 0068566b-92a3-4a65-a645-a6ad67946168
+ax_proxy, ax_true = fig.content
 
-# ╔═╡ 0ecaecb4-8271-419a-91df-dd601e7c5cd0
-Main.plot_optimize_result(res)
+# ╔═╡ 5f31c678-6f02-4c0a-a087-c5c18503e753
+hlines!(ax_proxy, grouped_results[2, :aggregated].opt_val.mean, label="NoOpt benchmark", linestyle=:dash, color=:blue)
+
+# ╔═╡ 4c179c6c-9d17-41bf-925b-767db7b8b2eb
+fig
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2007,12 +2013,14 @@ version = "4.1.0+0"
 # ╠═8e686388-d366-46a5-938c-161d841875c2
 # ╠═3b343b4d-505f-4ac4-99c9-d33ea5ff5f58
 # ╠═18a5d8a9-1d90-418e-bdb2-2ef21a49d492
+# ╠═6435838d-0e7e-448e-a51d-1695e49ddeb7
 # ╠═fa060b99-a8bf-4d22-9b0f-c32301f68c42
 # ╠═14a2b728-cae2-4bed-a946-62976ba15b32
-# ╠═41f1e93b-282b-43a8-8504-0bd6b3084d33
-# ╠═de7b9f52-bb40-4679-997f-7465e777d0bf
-# ╠═b97aa6c8-1030-425e-ae2c-9a31f0edb34a
-# ╠═8c2c7845-ec4b-4b44-8701-4b6c1d712ee5
-# ╠═0ecaecb4-8271-419a-91df-dd601e7c5cd0
+# ╠═ac4adffe-c8b8-457c-b42b-ebd0bf58dc81
+# ╠═4b76946f-dfd6-4780-baf2-a513bf358015
+# ╠═ba942fd1-c22b-4982-aa7b-488d3590eb97
+# ╠═0068566b-92a3-4a65-a645-a6ad67946168
+# ╠═5f31c678-6f02-4c0a-a087-c5c18503e753
+# ╠═4c179c6c-9d17-41bf-925b-767db7b8b2eb
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
