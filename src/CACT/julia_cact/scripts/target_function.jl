@@ -37,39 +37,68 @@ function target_function(;
     tsp_solver::TSPSolver,
     proxy_objective_function::ProxyObjectiveFunction,
     _true_base_locations::Matrix,
-    true_objective_functions::Tuple{TrueObjectiveFunction},
-    x_trajectory,
-    proxy_objective_trajectory,
-    true_objectives_trajectory
+    true_objective_functions::Tuple{Vararg{TrueObjectiveFunction}},
+    x_trajectory::AbstractVector,
+    incumbent_x_trajectory::AbstractVector,
+    proxy_objective_trajectory::AbstractVector,
+    incumbent_proxy_objective_trajectory::AbstractVector,
+    true_objectives_trajectory::AbstractDict,
+    incumbent_true_objectives_trajectory::AbstractDict,
 )
-    # true_obj_fns = [TRUE_OBJECTIVE_REGISTRY[obj_fn] for obj_fn in true_objective_funcs_symbols]
-    # proxy_obj_fn = PROXY_OBJECTIVE_REGISTRY[proxy_objective_func_symbol]
 
     base_locations = x_to_coords(x)
     # this sorting will allow function caching later
     x_cache = Tuple(sortslices(base_locations, dims=1)')  # have to re-transpose to get tuple of (x1, y1, x2, y2, ...)
     # if x_cache is in the cache, skip the call to compute_bids, and retrieve bids from the cache instead
 
-    # get the bids
-    base_locations_sorted = sortslices(base_locations, dims=1)  # gives [x1 y1; x2 y2; ...]
-    bids_pred = compute_bids(tsp_solver, base_locations_sorted, bundles)
-
-    # logging the trajectory
-    push!(x_trajectory, copy(base_locations_sorted))
-    # not sure if copy is necessary in Julia
-
-    # loggin proxy objective
+    # 1. get the bids
+    x_base_locations_sorted = sortslices(base_locations, dims=1)  # gives [x1 y1; x2 y2; ...]
+    bids_pred = compute_bids(tsp_solver, x_base_locations_sorted, bundles)
     proxy_objective_value = compute_proxy_objective(proxy_objective_function, bids_pred, bids)
-    push!(proxy_objective_trajectory, proxy_objective_value)
 
-    # logging true objective
-    # TrueObjectiveNT = eltype(true_objectives_trajectory)
-    # vals = Tuple(f(base_locations_sorted, _true_base_locations) for f in true_obj_fns)
-    # valsNT = TrueObjectiveNT(vals)
-    # push!(true_objectives_trajectory, valsNT)
+    # 2. logging the trajectories
+    push!(x_trajectory, copy(x_base_locations_sorted))  # x trajectory
+    push!(proxy_objective_trajectory, proxy_objective_value)  # proxy trajectory
+    # true trajectory:
+    true_objective_values = Dict()  
     for true_objective_func in true_objective_functions
-        val = compute_true_objective(true_objective_func, base_locations_sorted, _true_base_locations)
-        push!(true_objectives_trajectory[Symbol(typeof(true_objective_func))], val)
+        key = Symbol(typeof(true_objective_func))
+        val = compute_true_objective(true_objective_func, x_base_locations_sorted, _true_base_locations)
+        true_objective_values[key] = val
+        push!(true_objectives_trajectory[key], val)
+    end
+
+    # 3. find curent incumbent
+    if length(proxy_objective_trajectory) <= 1
+        current_incumbent_proxy = last(proxy_objective_trajectory)
+    else
+        current_incumbent_proxy = proxy_objective_value
+    end
+
+    # 4. log the incumbents
+    flag_new_incumbent = proxy_objective_value < current_incumbent_proxy
+    flag_first_iteration = length(proxy_objective_trajectory) <= 1 
+    if flag_new_incumbent || flag_first_iteration
+        # we did find a new incumbent proxy objective OR this is the first probe: update all incumbents
+        new_incumbent_proxy = proxy_objective_value
+        new_incumbent_x = x_base_locations_sorted
+        new_incumbent_true = true_objective_values  # dict of values
+    else
+        # no new incumbent, copy the old incumbents
+        new_incumbent_proxy = last(incumbent_proxy_objective_trajectory)
+        new_incumbent_x = last(incumbent_x_trajectory)
+        new_incumbent_true = Dict()
+        for true_objective_func in true_objective_functions
+            key = Symbol(typeof(true_objective_func))
+            val = last(true_objectives_trajectory[key])
+            new_incumbent_true[key] = val
+        end
+    end
+    # update the incumbent trajectories
+    push!(incumbent_proxy_objective_trajectory, new_incumbent_proxy)
+    push!(incumbent_x_trajectory, new_incumbent_x)
+    for (key, val) in new_incumbent_true
+        push!(incumbent_true_objectives_trajectory[key], val)
     end
 
     num_evals = length(proxy_objective_trajectory)

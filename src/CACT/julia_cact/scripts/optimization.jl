@@ -73,13 +73,16 @@ function auctioneer_optimize(
     params_lower_bounds,
     params_upper_bounds,
     proxy_objective_function::ProxyObjectiveFunction,
-    true_objective_functions::Tuple{TrueObjectiveFunction}
+    true_objective_functions::Tuple{Vararg{TrueObjectiveFunction}}
 )::OptimizeResult
     num_parameters = 2 * pred_num_locations
     optimizer = NLopt.Opt(opt_algorithm.algorithm, num_parameters)
     x_trajectory = []
+    incumbent_x_trajectory = []
     proxy_objective_trajectory = []
+    incumbent_proxy_objective_trajectory = []
     true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
+    incumbent_true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
 
     # create the closure of the target_function that NLopt can handle
     partial_target_func = (x, grad) -> target_function(
@@ -92,8 +95,11 @@ function auctioneer_optimize(
         _true_base_locations=_true_base_locations,
         true_objective_functions=true_objective_functions,
         x_trajectory=x_trajectory,
+        incumbent_x_trajectory=incumbent_x_trajectory,                
         proxy_objective_trajectory=proxy_objective_trajectory,
-        true_objectives_trajectory=true_objectives_trajectory
+        incumbent_proxy_objective_trajectory=incumbent_proxy_objective_trajectory,
+        true_objectives_trajectory=true_objectives_trajectory,
+        incumbent_true_objectives_trajectory=incumbent_true_objectives_trajectory,
     )
     NLopt.min_objective!(optimizer, partial_target_func)
     lower_bounds!(optimizer, repeat(params_lower_bounds, pred_num_locations))
@@ -113,8 +119,11 @@ function auctioneer_optimize(
         num_evals,
         return_code,
         x_trajectory,
+        incumbent_x_trajectory,
         proxy_objective_trajectory,
+        incumbent_proxy_objective_trajectory,
         true_objectives_trajectory,
+        incumbent_true_objectives_trajectory
     )
 end
 
@@ -130,7 +139,7 @@ function auctioneer_optimize(
     params_lower_bounds,
     params_upper_bounds,
     proxy_objective_function::ProxyObjectiveFunction,
-    true_objective_functions::Tuple{TrueObjectiveFunction}
+    true_objective_functions::Tuple{Vararg{TrueObjectiveFunction}}
 )::OptimizeResult
     num_parameters = 2 * pred_num_locations
     x_trajectory = []

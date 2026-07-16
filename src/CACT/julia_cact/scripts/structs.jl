@@ -71,8 +71,8 @@ end
     seed::Int
     true_base_location_generator::LocationGenerator
     auction_pool_location_generator::LocationGenerator
-    x_min::Real =0
-    x_max::Real =100
+    x_min::Real = 0
+    x_max::Real = 100
     y_min::Real = 0
     y_max::Real = 100
     size_auction_pool::Int
@@ -84,7 +84,7 @@ end
     # TODO add a batch size: only batch_size out of all available bundles will be evaluated in each optimizer iteration. (randomly selected, or using a more advanced selection mechanism (e.g.: select harder bundles more often))
     x0_seeder::OptimizationSeeder
     proxy_objective_function::ProxyObjectiveFunction
-    true_objective_functions::Tuple{TrueObjectiveFunction}
+    true_objective_functions::Tuple{Vararg{TrueObjectiveFunction}}
     tags::Tuple{String} # should this be part of the config?!
 end
 
@@ -101,8 +101,11 @@ struct OptimizeResult
     num_evals::Int
     return_code
     x_trajectory
+    incumbent_x_trajectory
     proxy_objective_trajectory::Vector{Float64}
-    true_objectives_trajectory::Dict{Symbol, Vector{Float64}}
+    incumbent_proxy_objective_trajectory::Vector{Float64}
+    true_objectives_trajectory::Dict{Symbol,Vector{Float64}}
+    incumbent_true_objectives_trajectory::Dict{Symbol, Vector{Float64}}
 end
 
 struct AggrOptimizeResults
@@ -112,8 +115,8 @@ struct AggrOptimizeResults
     proxy_objective_trajectory_mean::Vector{Float64}
     proxy_objective_trajectory_std::Vector{Float64}
 
-    true_objectives_trajectory_mean::Dict{Symbol, Vector{Float64}}
-    true_objectives_trajectory_std::Dict{Symbol, Vector{Float64}}
+    true_objectives_trajectory_mean::Dict{Symbol,Vector{Float64}}
+    true_objectives_trajectory_std::Dict{Symbol,Vector{Float64}}
 
 end
 
@@ -133,7 +136,7 @@ end
     optimizer::DerivativeFreeOptimizer
     x0_seeder::OptimizationSeeder
     proxy_objective_function::ProxyObjectiveFunction
-    true_objective_functions::Tuple{TrueObjectiveFunction}
+    true_objective_functions::Tuple{Vararg{TrueObjectiveFunction}}
 
     # --- input_data data (depends on seed/hyperparams, expensive to recompute) ---
     true_base_locations
@@ -169,7 +172,7 @@ function incumbent_trajectories(r::OptimizeResult)
         (acc, x) -> x[2] < acc[2] ? x : acc,
         collect(zip(eachindex(proxy), proxy)),
     )
-    incumbent_idx   = first.(incumbent_pairs)
+    incumbent_idx = first.(incumbent_pairs)
     incumbent_proxy = last.(incumbent_pairs)
 
     incumbent_true = Dict(
@@ -180,42 +183,56 @@ function incumbent_trajectories(r::OptimizeResult)
 end
 
 struct ScalarSummary
-    mean::Float64
-    std::Float64
-    min::Float64
-    max::Float64
     n::Int
+    min::Float64
+    q25::Float64
+    mean::Float64
+    q75::Float64
+    max::Float64
+    std::Float64
 end
 
 function summarize_scalar(xs::AbstractVector{<:Real})
-    return ScalarSummary(mean(xs), std(xs), minimum(xs), maximum(xs), length(xs))
+    return ScalarSummary(
+        length(xs),
+        minimum(xs),
+        quantile(xs, 0.25),
+        mean(xs),
+        quantile(xs, 0.75),
+        maximum(xs),
+        std(xs)
+    )
 end
 
 struct TrajectorySummary
-    mean::Vector{Float64}
-    std::Vector{Float64}
-    min::Vector{Float64}
-    max::Vector{Float64}
     n::Int
+    min::Vector{Float64}
+    q25::Vector{Float64}
+    mean::Vector{Float64}
+    q75::Vector{Float64}
+    max::Vector{Float64}
+    std::Vector{Float64}
 end
 
 function summarize_trajectories(vecs::AbstractVector{<:AbstractVector{<:Real}})
     M = stack(vecs; dims=1)
     return TrajectorySummary(
-        vec(mean(M; dims=1)),
-        vec(std(M; dims=1)),
-        vec(minimum(M; dims=1)),
-        vec(maximum(M; dims=1)),
         length(vecs),
+        vec(minimum(M; dims=1)),
+        vec(mapslices(col -> quantile(col, 0.25), M; dims=1)),
+        vec(mean(M; dims=1)),
+        vec(mapslices(col->quantile(col, 0.75), M; dims=1)),
+        vec(maximum(M; dims=1)),
+        vec(std(M; dims=1)),
     )
 end
 
 struct AggregatedOptimizeResult
     opt_val::ScalarSummary
     proxy_objective_trajectory::TrajectorySummary
-    true_objectives_trajectory::Dict{Symbol, TrajectorySummary}
+    true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
     incumbent_proxy_objective::TrajectorySummary
-    incumbent_true_objectives_trajectory::Dict{Symbol, TrajectorySummary}
+    incumbent_true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
     n::Int
 end
 
@@ -225,10 +242,10 @@ function aggregate_results(vec_opt_res::AbstractVector)
 
     # --- raw (non-incumbent) summaries, as before ---
     opt_val_summary = summarize_scalar([r.opt_val for r in valid])
-    proxy_summary   = summarize_trajectories([r.proxy_objective_trajectory for r in valid])
+    proxy_summary = summarize_trajectories([r.proxy_objective_trajectory for r in valid])
 
     all_keys = mapreduce(r -> collect(keys(r.true_objectives_trajectory)), union, valid)
-    true_obj_summaries = Dict{Symbol, TrajectorySummary}(
+    true_obj_summaries = Dict{Symbol,TrajectorySummary}(
         k => summarize_trajectories([r.true_objectives_trajectory[k] for r in valid])
         for k in all_keys
     )
@@ -238,7 +255,7 @@ function aggregate_results(vec_opt_res::AbstractVector)
 
     incumbent_proxy_summary = summarize_trajectories([inc[2] for inc in incumbents])
 
-    incumbent_true_obj_summaries = Dict{Symbol, TrajectorySummary}(
+    incumbent_true_obj_summaries = Dict{Symbol,TrajectorySummary}(
         k => summarize_trajectories([inc[3][k] for inc in incumbents])
         for k in all_keys
     )
@@ -252,3 +269,6 @@ function aggregate_results(vec_opt_res::AbstractVector)
         length(valid),
     )
 end
+
+
+#TODO struct for xmin, xmax, ymin, ymax (e.g. map or boundaries)
