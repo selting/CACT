@@ -95,7 +95,7 @@ struct InputData
     true_carrier_bids::Vector{Float64}
 end
 
-struct OptimizeResult
+@kwdef struct OptimizeResult
     x_opt
     opt_val::Float64
     num_evals::Int
@@ -108,17 +108,32 @@ struct OptimizeResult
     incumbent_true_objectives_trajectory::Dict{Symbol, Vector{Float64}}
 end
 
-struct AggrOptimizeResults
-    opt_val_mean::Float64
-    opt_val_std::Float64
-
-    proxy_objective_trajectory_mean::Vector{Float64}
-    proxy_objective_trajectory_std::Vector{Float64}
-
-    true_objectives_trajectory_mean::Dict{Symbol,Vector{Float64}}
-    true_objectives_trajectory_std::Dict{Symbol,Vector{Float64}}
-
+function optimize_result_2_df(or::OptimizeResult)
+    df = DataFrame(
+        step=1:or.num_evals,
+        proxy_objective=or.proxy_objective_trajectory,
+        incumbent_proxy_objective=or.incumbent_proxy_objective_trajectory,
+        x=or.x_trajectory,
+        incumbent_x = or.incumbent_x_trajectory
+    )
+    for (key, val) in or.true_objectives_trajectory
+        df[!, key] = val
+        df[!, "incumbent_" * string(key)] = or.incumbent_true_objectives_trajectory[key]
+    end
+    return df
 end
+
+# struct AggrOptimizeResults
+#     opt_val_mean::Float64
+#     opt_val_std::Float64
+
+#     proxy_objective_trajectory_mean::Vector{Float64}
+#     proxy_objective_trajectory_std::Vector{Float64}
+
+#     true_objectives_trajectory_mean::Dict{Symbol,Vector{Float64}}
+#     true_objectives_trajectory_std::Dict{Symbol,Vector{Float64}}
+
+# end
 
 @kwdef struct RunResult
     # --- hyperparameters (the "what did we configure") ---
@@ -227,11 +242,12 @@ function summarize_trajectories(vecs::AbstractVector{<:AbstractVector{<:Real}})
     )
 end
 
-struct AggregatedOptimizeResult
+
+@kwdef struct AggregatedOptimizeResult
     opt_val::ScalarSummary
     proxy_objective_trajectory::TrajectorySummary
     true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
-    incumbent_proxy_objective::TrajectorySummary
+    incumbent_proxy_objective_trajectory::TrajectorySummary
     incumbent_true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
     n::Int
 end
@@ -261,12 +277,12 @@ function aggregate_results(vec_opt_res::AbstractVector)
     )
 
     return AggregatedOptimizeResult(
-        opt_val_summary,
-        proxy_summary,
-        true_obj_summaries,
-        incumbent_proxy_summary,
-        incumbent_true_obj_summaries,
-        length(valid),
+        opt_val=opt_val_summary,
+        proxy_objective_trajectory=proxy_summary,
+        true_objectives_trajectory=true_obj_summaries,
+        incumbent_proxy_objective_trajectory=incumbent_proxy_summary,
+        incumbent_true_objectives_trajectory=incumbent_true_obj_summaries,
+        n=length(valid),
     )
 end
 

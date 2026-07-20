@@ -55,54 +55,58 @@ function target_function(;
     x_base_locations_sorted = sortslices(base_locations, dims=1)  # gives [x1 y1; x2 y2; ...]
     bids_pred = compute_bids(tsp_solver, x_base_locations_sorted, bundles)
     proxy_objective_value = compute_proxy_objective(proxy_objective_function, bids_pred, bids)
-
-    # 2. logging the trajectories
-    push!(x_trajectory, copy(x_base_locations_sorted))  # x trajectory
-    push!(proxy_objective_trajectory, proxy_objective_value)  # proxy trajectory
-    # true trajectory:
+    
+    # get the true objectives
     true_objective_values = Dict()  
     for true_objective_func in true_objective_functions
         key = Symbol(typeof(true_objective_func))
         val = compute_true_objective(true_objective_func, x_base_locations_sorted, _true_base_locations)
         true_objective_values[key] = val
-        push!(true_objectives_trajectory[key], val)
     end
 
-    # 3. find curent incumbent
-    if length(proxy_objective_trajectory) <= 1
-        current_incumbent_proxy = last(proxy_objective_trajectory)
-    else
-        current_incumbent_proxy = proxy_objective_value
-    end
-
-    # 4. log the incumbents
-    flag_new_incumbent = proxy_objective_value < current_incumbent_proxy
-    flag_first_iteration = length(proxy_objective_trajectory) <= 1 
-    if flag_new_incumbent || flag_first_iteration
-        # we did find a new incumbent proxy objective OR this is the first probe: update all incumbents
+    # 2. find old and new incumbent
+    if length(proxy_objective_trajectory) == 0
+        old_incumbent_proxy = Inf64
         new_incumbent_proxy = proxy_objective_value
+    else
+        old_incumbent_proxy = last(incumbent_proxy_objective_trajectory)
+        new_incumbent_proxy = min(proxy_objective_value, old_incumbent_proxy)
+    end
+
+    if new_incumbent_proxy < old_incumbent_proxy || length(proxy_objective_trajectory) == 0
+        println("new incumbent; update all incumbents")
+        # we did find a new incumbent proxy objective 
         new_incumbent_x = x_base_locations_sorted
         new_incumbent_true = true_objective_values  # dict of values
     else
+        println("no new incumbent")
         # no new incumbent, copy the old incumbents
-        new_incumbent_proxy = last(incumbent_proxy_objective_trajectory)
         new_incumbent_x = last(incumbent_x_trajectory)
         new_incumbent_true = Dict()
         for true_objective_func in true_objective_functions
             key = Symbol(typeof(true_objective_func))
-            val = last(true_objectives_trajectory[key])
+            val = last(incumbent_true_objectives_trajectory[key])
             new_incumbent_true[key] = val
         end
     end
-    # update the incumbent trajectories
+
+    # 3. logging the trajectories
+    push!(x_trajectory, copy(x_base_locations_sorted))  # x trajectory
+    push!(proxy_objective_trajectory, proxy_objective_value)  # proxy trajectory
+    # true trajectory:
+    for (key, val) in true_objective_values
+        push!(true_objectives_trajectory[key], val)
+    end
+
+    # 4. log the incumbents
     push!(incumbent_proxy_objective_trajectory, new_incumbent_proxy)
     push!(incumbent_x_trajectory, new_incumbent_x)
     for (key, val) in new_incumbent_true
         push!(incumbent_true_objectives_trajectory[key], val)
     end
 
-    num_evals = length(proxy_objective_trajectory)
-    println("Probe $num_evals: $proxy_objective_value")
+    # num_evals = length(proxy_objective_trajectory)
+    # println("Probe $num_evals: $proxy_objective_value")
 
     return proxy_objective_value
 end

@@ -1,6 +1,5 @@
 using NLopt
-
-
+include("structs.jl")
 
 function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::UniformRandomSeeder, rng, params_lower_bounds, params_upper_bounds, num_locations::Int)::Vector{Float64}
     x = rand(rng, Uniform(params_lower_bounds[1], params_upper_bounds[1]), num_locations)
@@ -58,9 +57,6 @@ function generate_optimization_seed(bundles, bids::Vector{Float64}, gen::SmartSe
     # return final_seed_locations
 end
 
-
-
-
 function auctioneer_optimize(
     opt_algorithm::NLOPT;
     rng,
@@ -95,7 +91,7 @@ function auctioneer_optimize(
         _true_base_locations=_true_base_locations,
         true_objective_functions=true_objective_functions,
         x_trajectory=x_trajectory,
-        incumbent_x_trajectory=incumbent_x_trajectory,                
+        incumbent_x_trajectory=incumbent_x_trajectory,
         proxy_objective_trajectory=proxy_objective_trajectory,
         incumbent_proxy_objective_trajectory=incumbent_proxy_objective_trajectory,
         true_objectives_trajectory=true_objectives_trajectory,
@@ -143,8 +139,12 @@ function auctioneer_optimize(
 )::OptimizeResult
     num_parameters = 2 * pred_num_locations
     x_trajectory = []
+    incumbent_x_trajectory = []
     proxy_objective_trajectory = []
+    incumbent_proxy_objective_trajectory = []
     true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
+    incumbent_true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
+
 
     # create the closure of the target_function that NLopt can handle
     partial_target_func = (x, grad) -> target_function(
@@ -157,22 +157,28 @@ function auctioneer_optimize(
         _true_base_locations=_true_base_locations,
         true_objective_functions=true_objective_functions,
         x_trajectory=x_trajectory,
+        incumbent_x_trajectory=incumbent_x_trajectory,
         proxy_objective_trajectory=proxy_objective_trajectory,
-        true_objectives_trajectory=true_objectives_trajectory
+        incumbent_proxy_objective_trajectory=incumbent_proxy_objective_trajectory,
+        true_objectives_trajectory=true_objectives_trajectory,
+        incumbent_true_objectives_trajectory=incumbent_true_objectives_trajectory
     )
 
     x_opt = rand(Uniform(0, 100), num_parameters)  # TODO make upper/lower bound variable!!
     opt_val = partial_target_func(x_opt, [])
     num_evals = 1
     return_code = 1
-
+    
     OptimizeResult(
-        x_opt,
-        opt_val,
-        num_evals,
-        return_code,
-        x_trajectory,
-        proxy_objective_trajectory,
-        true_objectives_trajectory,
+        x_opt=x_opt,
+        opt_val=opt_val,
+        num_evals=num_evals,
+        return_code=return_code,
+        x_trajectory=x_trajectory,
+        incumbent_x_trajectory=incumbent_x_trajectory,
+        proxy_objective_trajectory=proxy_objective_trajectory,
+        incumbent_proxy_objective_trajectory=incumbent_proxy_objective_trajectory,
+        true_objectives_trajectory=true_objectives_trajectory,
+        incumbent_true_objectives_trajectory=incumbent_true_objectives_trajectory
     )
 end

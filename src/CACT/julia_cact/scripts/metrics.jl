@@ -10,8 +10,14 @@ struct NormalizedHausdorffDistance <: TrueObjectiveFunction
     x_max::Real
     y_min::Real
     y_max::Real
+    # denom::Real
+
+    # function NormalizedHausdorffDistance(x_min, x_max, y_min, y_max)
+    #     denom = euclidean((x_min, y_min), (x_max, y_max))
+    #     new(x_min, x_max, y_min, y_max, denom)
+    # end
 end
-Base.string(NormalizedHausdorffDistance) = "NormalizedHausdorffDistance"
+Base.string(::NormalizedHausdorffDistance) = "NormalizedHausdorffDistance"
 
 struct TestDistance <: TrueObjectiveFunction end
 

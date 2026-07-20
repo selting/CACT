@@ -8,7 +8,7 @@ include("utils.jl")
 
 # using the DrWatson dictlist approacha: everything in a Vector is expanded once (Vectors of length 1 are not expanded naturally). 
 allparams = Dict(
-    "seed"=>collect(1:5),
+    "seed"=>collect(1:3),
     "true_base_location_generator"=>UniformLocationGenerator(),
     "auction_pool_location_generator"=>UniformLocationGenerator(),
     "x_min"=>0.0,
@@ -21,12 +21,15 @@ allparams = Dict(
     "pred_num_locations"=>8,
     "tsp_solver"=>ExactJuMPSolver(),
     "optimizer" => [
+        # NoOpt(),
         NLOPT(:GN_DIRECT_L_RAND, 8),
-        # NoOpt()
     ],
     "x0_seeder"=>UniformRandomSeeder(),
     "proxy_objective_function"=>RMSE(),
-    "true_objective_functions"=>Tuple([HausdorffDistance(), NormalizedHausdorffDistance(0, 100, 0, 100)]),
+    "true_objective_functions"=>Tuple([
+        HausdorffDistance(),
+        NormalizedHausdorffDistance(0, 100, 0, 100)
+    ]),
     "tags"=>Tuple(String["wildboar",]),
 )
 dicts = dict_list(allparams)
