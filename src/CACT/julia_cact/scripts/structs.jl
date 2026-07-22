@@ -54,6 +54,10 @@ end
 # Benchmark: Simply choose ONE single random estimation for x without optimizing at all
 struct NoOpt <: DerivativeFreeOptimizer end
 
+@kwdef struct RandomSearch <: DerivativeFreeOptimizer
+    max_eval::Int = 256
+end
+
 # ========================================================
 
 abstract type OptimizationSeeder end
@@ -105,23 +109,9 @@ end
     proxy_objective_trajectory::Vector{Float64}
     incumbent_proxy_objective_trajectory::Vector{Float64}
     true_objectives_trajectory::Dict{Symbol,Vector{Float64}}
-    incumbent_true_objectives_trajectory::Dict{Symbol, Vector{Float64}}
+    incumbent_true_objectives_trajectory::Dict{Symbol,Vector{Float64}}
 end
 
-function optimize_result_2_df(or::OptimizeResult)
-    df = DataFrame(
-        step=1:or.num_evals,
-        proxy_objective=or.proxy_objective_trajectory,
-        incumbent_proxy_objective=or.incumbent_proxy_objective_trajectory,
-        x=or.x_trajectory,
-        incumbent_x = or.incumbent_x_trajectory
-    )
-    for (key, val) in or.true_objectives_trajectory
-        df[!, key] = val
-        df[!, "incumbent_" * string(key)] = or.incumbent_true_objectives_trajectory[key]
-    end
-    return df
-end
 
 # struct AggrOptimizeResults
 #     opt_val_mean::Float64

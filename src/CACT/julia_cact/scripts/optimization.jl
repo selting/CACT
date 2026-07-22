@@ -102,6 +102,7 @@ function auctioneer_optimize(
     upper_bounds!(optimizer, repeat(params_upper_bounds, pred_num_locations))
     maxeval!(optimizer, opt_algorithm.max_eval)
     x0 = generate_optimization_seed(bundles, bids, x0_seeder, rng, params_lower_bounds, params_upper_bounds, pred_num_locations)
+    NLopt.srand(Int.(rng.seed))
     println("===== OPTIMIZE START ===== (x0: $x0)")
     opt_val, min_x, return_code = NLopt.optimize!(optimizer, x0)
     num_evals = NLopt.numevals(optimizer)
@@ -180,5 +181,74 @@ function auctioneer_optimize(
         incumbent_proxy_objective_trajectory=incumbent_proxy_objective_trajectory,
         true_objectives_trajectory=true_objectives_trajectory,
         incumbent_true_objectives_trajectory=incumbent_true_objectives_trajectory
+    )
+end
+
+function auctioneer_optimize(
+    opt_algorithm::RandomSearch;
+    rng,
+    bundles,
+    bids::Vector{Float64},
+    tsp_solver::TSPSolver,
+    pred_num_locations::Int,
+    _true_base_locations,
+    x0_seeder::OptimizationSeeder,
+    params_lower_bounds,
+    params_upper_bounds,
+    proxy_objective_function::ProxyObjectiveFunction,
+    true_objective_functions::Tuple{Vararg{TrueObjectiveFunction}}
+)::OptimizeResult
+    # num_parameters = 2 * pred_num_locations
+    x_trajectory = []
+    incumbent_x_trajectory = []
+    proxy_objective_trajectory = []
+    incumbent_proxy_objective_trajectory = []
+    true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
+    incumbent_true_objectives_trajectory = Dict(Symbol(typeof(x))=>[] for x in true_objective_functions)
+
+    # create the closure of the target_function that NLopt can handle
+    partial_target_func = (x, grad) -> target_function(
+        x=x,
+        grad=grad,
+        bundles=bundles,
+        bids=bids,
+        tsp_solver=tsp_solver,
+        proxy_objective_function=proxy_objective_function,
+        _true_base_locations=_true_base_locations,
+        true_objective_functions=true_objective_functions,
+        x_trajectory=x_trajectory,
+        incumbent_x_trajectory=incumbent_x_trajectory,
+        proxy_objective_trajectory=proxy_objective_trajectory,
+        incumbent_proxy_objective_trajectory=incumbent_proxy_objective_trajectory,
+        true_objectives_trajectory=true_objectives_trajectory,
+        incumbent_true_objectives_trajectory=incumbent_true_objectives_trajectory,
+    )
+    x0 = generate_optimization_seed(bundles, bids, x0_seeder, rng, params_lower_bounds, params_upper_bounds, pred_num_locations)
+    println("===== OPTIMIZE START ===== (x0: $x0)")
+    for iter in 1:opt_algorithm.max_eval
+        x_coords = rand(rng, Uniform(params_lower_bounds[1], params_upper_bounds[1]), pred_num_locations)
+        y_coords = rand(rng, Uniform(params_lower_bounds[2], params_upper_bounds[2]), pred_num_locations)
+        x = []
+        for i in 1:pred_num_locations
+            push!(x, x_coords[i])
+            push!(x, y_coords[i])
+        end
+        partial_target_func(x, [])
+    end
+    num_evals = length(x_trajectory)
+    x_opt = x_to_coords(last(incumbent_x_trajectory))
+
+    # TODO this should ideally check for success first, using variable ret (i.e. the return code)
+    OptimizeResult(
+        x_opt,
+        opt_val,
+        num_evals,
+        return_code,
+        x_trajectory,
+        incumbent_x_trajectory,
+        proxy_objective_trajectory,
+        incumbent_proxy_objective_trajectory,
+        true_objectives_trajectory,
+        incumbent_true_objectives_trajectory
     )
 end

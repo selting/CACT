@@ -74,12 +74,12 @@ function target_function(;
     end
 
     if new_incumbent_proxy < old_incumbent_proxy || length(proxy_objective_trajectory) == 0
-        println("new incumbent; update all incumbents")
+        # println("new incumbent; update all incumbents")
         # we did find a new incumbent proxy objective 
         new_incumbent_x = x_base_locations_sorted
         new_incumbent_true = true_objective_values  # dict of values
     else
-        println("no new incumbent")
+        # println("no new incumbent")
         # no new incumbent, copy the old incumbents
         new_incumbent_x = last(incumbent_x_trajectory)
         new_incumbent_true = Dict()

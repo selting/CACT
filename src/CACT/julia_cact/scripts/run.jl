@@ -6,33 +6,6 @@ include("data_gen.jl")
 include("optimization.jl")
 include("config.jl")
 
-
-
-
-# function save_run(params::Dict, input_data::Dict, output_dict::Dict;
-#     tags::AbstractVector{String}=[],
-#     meta::AbstractDict{String}=Dict{String}())
-#     run_id = string(uuid4())
-#     path = joinpath("src/CACT/julia_cact/results", "$(run_id).jld2")
-#     tmp = path * ".tmp"
-#     jldsave(tmp;
-#         params=params,     # canonical — defines the experiment, tiny
-#         input_data=derived,   # cache — regenerable from params, can be large
-#         outputs=output_dict,
-#         tags=tags,
-#         meta=meta)
-#     mv(tmp, path)
-#     return run_id
-# end
-
-# function save_run(res::RunResult)
-#     runs_dir = datadir("exp_raw")
-#     name = res.run_id
-#     path = joinpath(runs_dir, "$name.jld2")
-#     jldsave(path; res)
-# end
-
-
 function run(config::CactConfig)
 
     rng = Xoshiro(config.seed)
