@@ -52,6 +52,7 @@ function solve_tsp(solver::ExactJuMPSolver, locations::Matrix)::TSPResult
     n = size(distances, 1)
 
     model = build_tsp_model(distances, n, solver.optimizer)
+    set_optimizer_attribute(model, "threads", 1)  # force single threaded solving
     set_optimizer_attribute(model, "time_limit", solver.time_limit)
     set_optimizer_attribute(model, "mip_rel_gap", solver.mip_rel_gap)
     JuMP.optimize!(model, )

@@ -36,6 +36,7 @@ allparams = Dict(
 dicts = dict_list(allparams)
 
 function manage_run(config_dict::Dict)
+    display(config_dict)
     config = CactConfig(; dict2ntuple(config_dict)...)
     flat_config_dict = flatten_dict(config_dict)  
 
