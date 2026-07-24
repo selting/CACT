@@ -100,10 +100,13 @@ struct InputData
 end
 
 @kwdef struct OptimizeResult
-    x_opt
-    opt_val::Float64
-    num_evals::Int
     return_code
+    num_evals::Integer
+
+    x_opt #::Vector{Float64}
+    proxy_objective_opt::Float64
+    true_objectives_opt::Dict{Symbol, Float64}
+
     x_trajectory
     incumbent_x_trajectory
     proxy_objective_trajectory::Vector{Float64}
@@ -164,117 +167,117 @@ end
 using Statistics
 
 """
-    incumbent_trajectories(r::OptimizeResult)
+#     incumbent_trajectories(r::OptimizeResult)
 
-Return (incumbent_idx, incumbent_proxy, incumbent_true) for a single run:
-- incumbent_idx: at each iteration, the index of the best (lowest) proxy value seen so far
-- incumbent_proxy: the running-min proxy value itself
-- incumbent_true: Dict of the true-objective value at that same incumbent index, per key
-"""
-function incumbent_trajectories(r::OptimizeResult)
-    proxy = r.proxy_objective_trajectory
-    incumbent_pairs = accumulate(
-        (acc, x) -> x[2] < acc[2] ? x : acc,
-        collect(zip(eachindex(proxy), proxy)),
-    )
-    incumbent_idx = first.(incumbent_pairs)
-    incumbent_proxy = last.(incumbent_pairs)
+# Return (incumbent_idx, incumbent_proxy, incumbent_true) for a single run:
+# - incumbent_idx: at each iteration, the index of the best (lowest) proxy value seen so far
+# - incumbent_proxy: the running-min proxy value itself
+# - incumbent_true: Dict of the true-objective value at that same incumbent index, per key
+# """
+# function incumbent_trajectories(r::OptimizeResult)
+#     proxy = r.proxy_objective_trajectory
+#     incumbent_pairs = accumulate(
+#         (acc, x) -> x[2] < acc[2] ? x : acc,
+#         collect(zip(eachindex(proxy), proxy)),
+#     )
+#     incumbent_idx = first.(incumbent_pairs)
+#     incumbent_proxy = last.(incumbent_pairs)
 
-    incumbent_true = Dict(
-        k => v[incumbent_idx] for (k, v) in r.true_objectives_trajectory
-    )
+#     incumbent_true = Dict(
+#         k => v[incumbent_idx] for (k, v) in r.true_objectives_trajectory
+#     )
 
-    return incumbent_idx, incumbent_proxy, incumbent_true
-end
+#     return incumbent_idx, incumbent_proxy, incumbent_true
+# end
 
-struct ScalarSummary
-    n::Int
-    min::Float64
-    q25::Float64
-    mean::Float64
-    q75::Float64
-    max::Float64
-    std::Float64
-end
+# struct ScalarSummary
+#     n::Int
+#     min::Float64
+#     q25::Float64
+#     mean::Float64
+#     q75::Float64
+#     max::Float64
+#     std::Float64
+# end
 
-function summarize_scalar(xs::AbstractVector{<:Real})
-    return ScalarSummary(
-        length(xs),
-        minimum(xs),
-        quantile(xs, 0.25),
-        mean(xs),
-        quantile(xs, 0.75),
-        maximum(xs),
-        std(xs)
-    )
-end
+# function summarize_scalar(xs::AbstractVector{<:Real})
+#     return ScalarSummary(
+#         length(xs),
+#         minimum(xs),
+#         quantile(xs, 0.25),
+#         mean(xs),
+#         quantile(xs, 0.75),
+#         maximum(xs),
+#         std(xs)
+#     )
+# end
 
-struct TrajectorySummary
-    n::Int
-    min::Vector{Float64}
-    q25::Vector{Float64}
-    mean::Vector{Float64}
-    q75::Vector{Float64}
-    max::Vector{Float64}
-    std::Vector{Float64}
-end
+# struct TrajectorySummary
+#     n::Int
+#     min::Vector{Float64}
+#     q25::Vector{Float64}
+#     mean::Vector{Float64}
+#     q75::Vector{Float64}
+#     max::Vector{Float64}
+#     std::Vector{Float64}
+# end
 
-function summarize_trajectories(vecs::AbstractVector{<:AbstractVector{<:Real}})
-    M = stack(vecs; dims=1)
-    return TrajectorySummary(
-        length(vecs),
-        vec(minimum(M; dims=1)),
-        vec(mapslices(col -> quantile(col, 0.25), M; dims=1)),
-        vec(mean(M; dims=1)),
-        vec(mapslices(col->quantile(col, 0.75), M; dims=1)),
-        vec(maximum(M; dims=1)),
-        vec(std(M; dims=1)),
-    )
-end
-
-
-@kwdef struct AggregatedOptimizeResult
-    opt_val::ScalarSummary
-    proxy_objective_trajectory::TrajectorySummary
-    true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
-    incumbent_proxy_objective_trajectory::TrajectorySummary
-    incumbent_true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
-    n::Int
-end
-
-function aggregate_results(vec_opt_res::AbstractVector)
-    valid = collect(skipmissing(vec_opt_res))
-    isempty(valid) && error("No non-missing OptimizeResult values to aggregate")
-
-    # --- raw (non-incumbent) summaries, as before ---
-    opt_val_summary = summarize_scalar([r.opt_val for r in valid])
-    proxy_summary = summarize_trajectories([r.proxy_objective_trajectory for r in valid])
-
-    all_keys = mapreduce(r -> collect(keys(r.true_objectives_trajectory)), union, valid)
-    true_obj_summaries = Dict{Symbol,TrajectorySummary}(
-        k => summarize_trajectories([r.true_objectives_trajectory[k] for r in valid])
-        for k in all_keys
-    )
-
-    # --- per-run incumbent trajectories, then aggregate those ---
-    incumbents = [incumbent_trajectories(r) for r in valid]  # Vector of (idx, proxy_inc, true_inc)
-
-    incumbent_proxy_summary = summarize_trajectories([inc[2] for inc in incumbents])
-
-    incumbent_true_obj_summaries = Dict{Symbol,TrajectorySummary}(
-        k => summarize_trajectories([inc[3][k] for inc in incumbents])
-        for k in all_keys
-    )
-
-    return AggregatedOptimizeResult(
-        opt_val=opt_val_summary,
-        proxy_objective_trajectory=proxy_summary,
-        true_objectives_trajectory=true_obj_summaries,
-        incumbent_proxy_objective_trajectory=incumbent_proxy_summary,
-        incumbent_true_objectives_trajectory=incumbent_true_obj_summaries,
-        n=length(valid),
-    )
-end
+# function summarize_trajectories(vecs::AbstractVector{<:AbstractVector{<:Real}})
+#     M = stack(vecs; dims=1)
+#     return TrajectorySummary(
+#         length(vecs),
+#         vec(minimum(M; dims=1)),
+#         vec(mapslices(col -> quantile(col, 0.25), M; dims=1)),
+#         vec(mean(M; dims=1)),
+#         vec(mapslices(col->quantile(col, 0.75), M; dims=1)),
+#         vec(maximum(M; dims=1)),
+#         vec(std(M; dims=1)),
+#     )
+# end
 
 
-#TODO struct for xmin, xmax, ymin, ymax (e.g. map or boundaries)
+# @kwdef struct AggregatedOptimizeResult
+#     opt_val::ScalarSummary
+#     proxy_objective_trajectory::TrajectorySummary
+#     true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
+#     incumbent_proxy_objective_trajectory::TrajectorySummary
+#     incumbent_true_objectives_trajectory::Dict{Symbol,TrajectorySummary}
+#     n::Int
+# end
+
+# function aggregate_results(vec_opt_res::AbstractVector)
+#     valid = collect(skipmissing(vec_opt_res))
+#     isempty(valid) && error("No non-missing OptimizeResult values to aggregate")
+
+#     # --- raw (non-incumbent) summaries, as before ---
+#     opt_val_summary = summarize_scalar([r.opt_val for r in valid])
+#     proxy_summary = summarize_trajectories([r.proxy_objective_trajectory for r in valid])
+
+#     all_keys = mapreduce(r -> collect(keys(r.true_objectives_trajectory)), union, valid)
+#     true_obj_summaries = Dict{Symbol,TrajectorySummary}(
+#         k => summarize_trajectories([r.true_objectives_trajectory[k] for r in valid])
+#         for k in all_keys
+#     )
+
+#     # --- per-run incumbent trajectories, then aggregate those ---
+#     incumbents = [incumbent_trajectories(r) for r in valid]  # Vector of (idx, proxy_inc, true_inc)
+
+#     incumbent_proxy_summary = summarize_trajectories([inc[2] for inc in incumbents])
+
+#     incumbent_true_obj_summaries = Dict{Symbol,TrajectorySummary}(
+#         k => summarize_trajectories([inc[3][k] for inc in incumbents])
+#         for k in all_keys
+#     )
+
+#     return AggregatedOptimizeResult(
+#         opt_val=opt_val_summary,
+#         proxy_objective_trajectory=proxy_summary,
+#         true_objectives_trajectory=true_obj_summaries,
+#         incumbent_proxy_objective_trajectory=incumbent_proxy_summary,
+#         incumbent_true_objectives_trajectory=incumbent_true_obj_summaries,
+#         n=length(valid),
+#     )
+# end
+
+
+# #TODO struct for xmin, xmax, ymin, ymax (e.g. map or boundaries)
