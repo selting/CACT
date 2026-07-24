@@ -1,6 +1,7 @@
 using DrWatson
 @quickactivate("julia_cact")
 using Revise
+using ProgressMeter
 
 include(scriptsdir("structs.jl"))
 include(scriptsdir("run.jl"))
@@ -37,7 +38,7 @@ allparams = Dict(
 dicts = dict_list(allparams)
 
 function manage_run(config_dict::Dict)
-    display(config_dict)
+    # display(config_dict)
     config = CactConfig(; dict2ntuple(config_dict)...)
     flat_config_dict = flatten_dict(config_dict)  
 
@@ -59,9 +60,11 @@ end
 path = datadir("exp_raw")
 
 results = Vector{Any}(undef, length(dicts))
+progress_meter = Progress(length(dicts); desc="Working: ", showspeed=true)
 
 Threads.@threads for i in eachindex(dicts)
     config_dict = dicts[i]
     data, file = produce_or_load(manage_run, config_dict, path; filename=hash, prefix="cact")
     results[i] = (data, file)
+    next!(progress_meter)
 end

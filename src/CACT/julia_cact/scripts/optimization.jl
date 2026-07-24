@@ -47,7 +47,7 @@ end
 
 incumbent_true_objectives_opt(trajectories) = Dict(key => last(value) for (key, value) in trajectories.incumbent_true_objectives_trajectory)
 
-function build_optimize_result(trajectories; return_code, num_evals::Int, x_opt, proxy_objective_opt::Float64)::OptimizeResult
+function build_optimize_result(trajectories; return_code, num_evals::Integer, x_opt, proxy_objective_opt::Float64)::OptimizeResult
     return OptimizeResult(
         return_code=return_code,
         num_evals=num_evals,
