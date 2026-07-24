@@ -27,6 +27,12 @@ end
 
 struct NearestNeighborSolver <: TSPSolver end
 
+# Exact TSP via Held-Karp dynamic programming. O(2^n n^2) time, O(2^n n) memory,
+# so practical for small n (roughly n <= ~15). Pure Julia: no external solver, no
+# global state, fully thread-safe -- unlike HiGHS, whose shared task scheduler
+# segfaults under Threads.@threads.
+struct HeldKarpSolver <: TSPSolver end
+
 @kwdef struct TwoOptSolver <: TSPSolver
     num_restarts::Int
     max_iterations::Int

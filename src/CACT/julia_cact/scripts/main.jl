@@ -20,7 +20,7 @@ allparams = Dict(
     "num_bundles"=>64,
     "true_num_locations"=>8,
     "pred_num_locations"=>8,
-    "tsp_solver"=>ExactJuMPSolver(),
+    "tsp_solver"=>HeldKarpSolver(),
     "optimizer" => [
         NoOpt(),
         NLOPT(:GN_DIRECT_L_RAND, 64),
