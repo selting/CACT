@@ -1,12 +1,4 @@
-using JLD2
-using UUIDs
-include("tsp.jl")
-include("metrics.jl")
-include("data_gen.jl")
-include("optimization.jl")
-include("config.jl")
-
-function run(config::CactConfig)
+function run_simulation(config::CactConfig)
 
     rng = Xoshiro(config.seed)
 

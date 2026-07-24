@@ -1,7 +1,7 @@
 using DrWatson
 using DataFrames
 using JLD2
-include("structs.jl")
+using julia_cact
 
 function load_key(path::String, key)
     jldopen(path, "r") do file

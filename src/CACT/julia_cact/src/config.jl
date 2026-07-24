@@ -1,5 +1,3 @@
-using DrWatson
-
 DrWatson.default_prefix(c::CactConfig) = "cact_"  #*c.tags[1]
 DrWatson.default_allowed(::CactConfig) = (Real, String, LocationGenerator, TSPSolver, DerivativeFreeOptimizer, OptimizationSeeder, ProxyObjectiveFunction, TrueObjectiveFunction)
 DrWatson.allaccess(::CactConfig) = (

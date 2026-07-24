@@ -2,10 +2,7 @@ using DrWatson
 @quickactivate("julia_cact")
 using Revise
 using ProgressMeter
-
-include(scriptsdir("structs.jl"))
-include(scriptsdir("run.jl"))
-include("utils.jl")
+using julia_cact
 
 # using the DrWatson dictlist approacha: everything in a Vector is expanded once (Vectors of length 1 are not expanded naturally). 
 allparams = Dict(
@@ -43,7 +40,7 @@ function manage_run(config_dict::Dict)
     flat_config_dict = flatten_dict(config_dict)  
 
     # actual run
-    input_data, optimize_result = run(config)
+    input_data, optimize_result = run_simulation(config)
 
     # create the file to store
     # meta = Dict("date" => )

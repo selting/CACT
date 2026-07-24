@@ -1,5 +1,5 @@
 using Makie
-include("structs.jl")
+using julia_cact
 
 
 

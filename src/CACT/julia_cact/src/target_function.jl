@@ -1,6 +1,3 @@
-include("metrics.jl")
-include("tsp.jl")
-
 function compute_bids(tsp_solver::TSPSolver, base_locations, bundles)::Vector{Float64}
     # compute tsp without bundle
     res_without_bundle = solve_tsp(tsp_solver, base_locations)

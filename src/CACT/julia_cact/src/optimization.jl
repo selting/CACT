@@ -1,6 +1,3 @@
-using NLopt
-include("structs.jl")
-
 # ========================================================
 # Shared scaffolding for auctioneer_optimize methods below.
 # Each optimizer dispatch only needs to run its own search loop and
@@ -9,12 +6,12 @@ include("structs.jl")
 
 function init_trajectories(true_objective_functions::Tuple{Vararg{TrueObjectiveFunction}})
     return (
-        x_trajectory=[],
-        incumbent_x_trajectory=[],
-        proxy_objective_trajectory=[],
-        incumbent_proxy_objective_trajectory=[],
-        true_objectives_trajectory=Dict(Symbol(typeof(f)) => [] for f in true_objective_functions),
-        incumbent_true_objectives_trajectory=Dict(Symbol(typeof(f)) => [] for f in true_objective_functions),
+        x_trajectory=Matrix{Float64}[],
+        incumbent_x_trajectory=Matrix{Float64}[],
+        proxy_objective_trajectory=Float64[],
+        incumbent_proxy_objective_trajectory=Float64[],
+        true_objectives_trajectory=Dict{Symbol,Vector{Float64}}(Symbol(typeof(f)) => Float64[] for f in true_objective_functions),
+        incumbent_true_objectives_trajectory=Dict{Symbol,Vector{Float64}}(Symbol(typeof(f)) => Float64[] for f in true_objective_functions),
     )
 end
 

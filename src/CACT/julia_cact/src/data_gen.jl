@@ -1,7 +1,3 @@
-using Distributions
-using Random
-include("target_function.jl")
-
 function draw_bundles(; rng, num_bundles::Int, auction_pool::Matrix)
     # use a set of tuples to track uniqueness cleanly
     unique_bundles = Set()

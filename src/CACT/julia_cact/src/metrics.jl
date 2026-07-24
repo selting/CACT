@@ -1,5 +1,3 @@
-using Distances
-
 abstract type TrueObjectiveFunction end
 
 struct HausdorffDistance <: TrueObjectiveFunction end

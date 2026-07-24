@@ -1,13 +1,3 @@
-using JuMP
-using Distances
-using HiGHS
-
-
-
-# function solve_tsp(solver::TSPSolver, locations::Matrix)::TSPResult
-
-# end
-
 function build_tsp_model(d, n, optimizer)
     model = Model(optimizer)
     set_silent(model)

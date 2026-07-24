@@ -1,5 +1,3 @@
-include("metrics.jl")
-
 # ========================================================
 
 abstract type LocationGenerator end
@@ -106,15 +104,15 @@ struct InputData
 end
 
 @kwdef struct OptimizeResult
-    return_code
-    num_evals::Integer
+    return_code                 # heterogeneous across optimizers (Symbol / Int / NLopt code)
+    num_evals::Int
 
-    x_opt #::Vector{Float64}
+    x_opt                       # NOTE: NoOpt returns a flat Vector{Float64}, the others a coords Matrix{Float64}
     proxy_objective_opt::Float64
     true_objectives_opt::Dict{Symbol, Float64}
 
-    x_trajectory
-    incumbent_x_trajectory
+    x_trajectory::Vector{Matrix{Float64}}
+    incumbent_x_trajectory::Vector{Matrix{Float64}}
     proxy_objective_trajectory::Vector{Float64}
     incumbent_proxy_objective_trajectory::Vector{Float64}
     true_objectives_trajectory::Dict{Symbol,Vector{Float64}}
@@ -169,8 +167,6 @@ end
     tags::Tuple{String}        # e.g. ["baseline", "debug", "paper-fig3"]
 end
 
-
-using Statistics
 
 """
 #     incumbent_trajectories(r::OptimizeResult)
